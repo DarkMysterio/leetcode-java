@@ -1,0 +1,1027 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary Tree Construction Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Fira Code -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f9ff',
+                            500: '#06b6d4',
+                            600: '#0891b2',
+                            900: '#0e7490',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0b0f17;
+            color: #e2e8f0;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .array-node {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-glow {
+            animation: pulse-border 1.6s infinite;
+        }
+        @keyframes pulse-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-border 1.6s infinite;
+        }
+        @keyframes pulse-emerald-border {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.7); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        .tree-node {
+            transition: transform 0.4s ease, fill 0.3s ease, stroke 0.3s ease;
+        }
+        .tree-edge {
+            transition: stroke 0.4s ease, stroke-width 0.4s ease;
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950">
+                    <i class="fa-solid fa-diagram-project text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Preorder & Inorder Tree Reconstruction
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">Visualizer</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Interactive step-by-step algorithm breakdown & pointer tracker</p>
+                </div>
+            </div>
+
+            <!-- Example Selector & Custom Modal Trigger -->
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="relative flex-1 sm:w-64">
+                    <select id="exampleSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Standard Example (LeetCode 105)</option>
+                        <option value="1">2. Left-Skewed Tree</option>
+                        <option value="2">3. Right-Skewed Tree</option>
+                        <option value="3">4. Perfect Binary Tree (Depth 3)</option>
+                        <option value="4">5. Zig-Zag Tree</option>
+                        <option value="5">6. BST with Larger Values</option>
+                        <option value="6">7. Asymmetric Balanced Tree</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customInputBtn" class="px-3 py-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Control Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Step Controls -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Scrub Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Selector & Legend -->
+            <div class="flex items-center gap-4 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
+                        <option value="1600">0.5x Speed</option>
+                        <option value="1000" selected>1.0x Speed</option>
+                        <option value="600">1.5x Speed</option>
+                        <option value="300">2.5x Speed</option>
+                    </select>
+                </div>
+                <div class="hidden lg:flex items-center gap-2 text-[11px] text-slate-400 border-l border-slate-800 pl-4">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-400"></span> preStart</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-emerald-400"></span> inIndex</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500"></span> Left Sub</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-fuchsia-500"></span> Right Sub</span>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: Arrays, Pointer Cards & Explanation -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- Array Visualizers Panel -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-6">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                        <span><i class="fa-solid fa-list-ol text-cyan-400 mr-1.5"></i> Traversals & Active Windows</span>
+                        <span id="arrayLengthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">N = 5</span>
+                    </h2>
+
+                    <!-- Preorder Array Display -->
+                    <div class="space-y-2">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-medium text-amber-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-amber-400"></span> Preorder Array
+                            </span>
+                            <span class="text-[11px] text-slate-400 mono">[Root &rarr; Left &rarr; Right]</span>
+                        </div>
+                        <div id="preorderContainer" class="flex items-center gap-2 overflow-x-auto pb-2 pt-4 px-2 min-h-[76px]">
+                            <!-- Dynamically populated boxes -->
+                        </div>
+                    </div>
+
+                    <!-- Inorder Array Display -->
+                    <div class="space-y-2 pt-2 border-t border-slate-800">
+                        <div class="flex items-center justify-between text-xs">
+                            <span class="font-medium text-cyan-300 flex items-center gap-1.5">
+                                <span class="w-2 h-2 rounded-full bg-cyan-400"></span> Inorder Array
+                            </span>
+                            <span class="text-[11px] text-slate-400 mono">[Left &rarr; Root &rarr; Right]</span>
+                        </div>
+                        <div id="inorderContainer" class="flex items-center gap-2 overflow-x-auto pb-2 pt-4 px-2 min-h-[76px]">
+                            <!-- Dynamically populated boxes -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Variable Pointer Cards -->
+                <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md flex flex-col">
+                        <span class="text-[10px] uppercase font-bold text-amber-400 tracking-wider">preStart</span>
+                        <span id="valPreStart" class="mono text-lg font-bold text-slate-100 mt-1">-</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">Root index in Preorder</span>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md flex flex-col">
+                        <span class="text-[10px] uppercase font-bold text-sky-400 tracking-wider">inStart..inEnd</span>
+                        <span id="valInRange" class="mono text-lg font-bold text-slate-100 mt-1">-</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">Active Inorder Subtree</span>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md flex flex-col">
+                        <span class="text-[10px] uppercase font-bold text-emerald-400 tracking-wider">inIndex</span>
+                        <span id="valInIndex" class="mono text-lg font-bold text-slate-100 mt-1">-</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">Root index in Inorder</span>
+                    </div>
+
+                    <div class="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-md flex flex-col">
+                        <span class="text-[10px] uppercase font-bold text-indigo-400 tracking-wider">leftSubtreeSize</span>
+                        <span id="valLeftSize" class="mono text-lg font-bold text-slate-100 mt-1">-</span>
+                        <span class="text-[10px] text-slate-400 mt-0.5">inIndex - inStart</span>
+                    </div>
+                </div>
+
+                <!-- Step Narrative & Dynamic Formula Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1 min-h-[220px]">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Algorithm Step Breakdown</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[60px]">
+                        Click Play or Next to step through how preorder and inorder traversals are partitioned to construct each tree node.
+                    </p>
+
+                    <!-- Formula & Math Callout -->
+                    <div id="formulaBox" class="mt-auto bg-slate-950 border border-slate-800/80 rounded-xl p-3 mono text-xs text-slate-300 space-y-1.5">
+                        <!-- Dynamic formulas populated via JavaScript -->
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- Tree SVG Display Container -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4 relative min-h-[380px] lg:min-h-[420px]">
+                    <div class="flex items-center justify-between">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-sitemap text-cyan-400"></i> Constructed Binary Tree
+                        </h2>
+                        <span id="treeStatusBadge" class="text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            Empty
+                        </span>
+                    </div>
+
+                    <!-- SVG Workspace -->
+                    <div class="w-full h-full flex-1 relative bg-slate-950/80 border border-slate-800/80 rounded-xl overflow-hidden flex items-center justify-center p-2">
+                        <svg id="treeSvg" class="w-full h-[320px] lg:h-[360px]" viewBox="0 0 600 360" preserveAspectRatio="xMidYMid meet">
+                            <!-- SVG edges and nodes dynamically rendered here -->
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Call Stack Visualizer -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center justify-between">
+                        <span><i class="fa-solid fa-layer-group text-purple-400 mr-1.5"></i> Recursion Stack</span>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </h2>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[160px] overflow-y-auto pr-1">
+                        <!-- Stack frame items inserted here -->
+                        <div class="text-xs text-slate-400 italic text-center py-2">Call stack is empty</div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </main>
+
+    <!-- Custom Input Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-cyan-400"></i> Custom Traversals Input
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-amber-300 mb-1">Preorder Array (Comma separated)</label>
+                    <input id="customPreorder" type="text" value="3, 9, 20, 15, 7" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div>
+                    <label class="block font-medium text-cyan-300 mb-1">Inorder Array (Comma separated)</label>
+                    <input id="customInorder" type="text" value="9, 3, 15, 20, 7" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Validation error message
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Cancel</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-950">Build Visualizer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Preset Datasets
+        const EXAMPLES = [
+            {
+                name: "1. Standard Example (LeetCode 105)",
+                preorder: [3, 9, 20, 15, 7],
+                inorder: [9, 3, 15, 20, 7]
+            },
+            {
+                name: "2. Left-Skewed Tree",
+                preorder: [1, 2, 3, 4],
+                inorder: [4, 3, 2, 1]
+            },
+            {
+                name: "3. Right-Skewed Tree",
+                preorder: [1, 2, 3, 4],
+                inorder: [1, 2, 3, 4]
+            },
+            {
+                name: "4. Perfect Binary Tree (Depth 3)",
+                preorder: [1, 2, 4, 5, 3, 6, 7],
+                inorder: [4, 2, 5, 1, 6, 3, 7]
+            },
+            {
+                name: "5. Zig-Zag Tree",
+                preorder: [1, 2, 3, 4, 5],
+                inorder: [3, 2, 4, 1, 5]
+            },
+            {
+                name: "6. BST with Larger Values",
+                preorder: [10, 5, 2, 7, 15, 12, 20],
+                inorder: [2, 5, 7, 10, 12, 15, 20]
+            },
+            {
+                name: "7. Asymmetric Balanced Tree",
+                preorder: [5, 3, 1, 4, 8, 7, 9, 11],
+                inorder: [1, 3, 4, 5, 7, 8, 9, 11]
+            }
+        ];
+
+        // State variables
+        let currentPreorder = [];
+        let currentInorder = [];
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1000;
+        let refTreeLayout = null;
+
+        // Calculate layout for rendering nodes in SVG
+        function calculateTreeLayout(preorder, inorder) {
+            const inMap = new Map();
+            inorder.forEach((val, idx) => inMap.set(val, idx));
+            let idCounter = 0;
+
+            function build(pStart, iStart, iEnd, depth) {
+                if (iStart > iEnd || pStart >= preorder.length) return null;
+                const val = preorder[pStart];
+                const iIndex = inMap.get(val);
+                if (iIndex === undefined) return null;
+                const leftSize = iIndex - iStart;
+
+                const node = {
+                    id: ++idCounter,
+                    val: val,
+                    inIndex: iIndex,
+                    depth: depth,
+                    left: build(pStart + 1, iStart, iIndex - 1, depth + 1),
+                    right: build(pStart + leftSize + 1, iIndex + 1, iEnd, depth + 1)
+                };
+                return node;
+            }
+
+            const root = build(0, 0, inorder.length - 1, 0);
+
+            let maxDepth = 0;
+            function findDepth(node) {
+                if (!node) return;
+                if (node.depth > maxDepth) maxDepth = node.depth;
+                findDepth(node.left);
+                findDepth(node.right);
+            }
+            findDepth(root);
+
+            return { root, maxDepth, nodeCount: inorder.length };
+        }
+
+        function generateAlgorithmSteps(preorder, inorder) {
+            const stepsList = [];
+            const inMap = new Map();
+            inorder.forEach((val, idx) => inMap.set(val, idx));
+            const stack = [];
+            const builtNodes = new Set();
+            const builtEdges = new Set();
+
+            const cloneStack = (s) => s.map(f => ({ ...f }));
+
+            function buildTreeTrace(pStart, iStart, iEnd, parentVal = null, isLeft = true) {
+                const callFrame = {
+                    pStart,
+                    iStart,
+                    iEnd,
+                    rootVal: (pStart < preorder.length) ? preorder[pStart] : null,
+                    parentVal,
+                    isLeft
+                };
+                stack.push(callFrame);
+
+                // Base Case Check
+                if (iStart > iEnd) {
+                    stepsList.push({
+                        type: 'BASE_CASE',
+                        title: 'Base Case: Null Subtree Branch',
+                        desc: `Invalid inorder range [inStart: ${iStart} > inEnd: ${iEnd}]. No nodes remain in this branch. Return null.`,
+                        pStart, iStart, iEnd,
+                        inIndex: null,
+                        leftSize: null,
+                        rootVal: null,
+                        stack: cloneStack(stack),
+                        builtNodes: new Set(builtNodes),
+                        builtEdges: new Set(builtEdges),
+                        activeVal: null
+                    });
+                    stack.pop();
+                    return null;
+                }
+
+                const rootVal = preorder[pStart];
+                const inIndex = inMap.get(rootVal);
+                const leftSize = inIndex - iStart;
+
+                // Step 1: PICK ROOT
+                stepsList.push({
+                    type: 'PICK_ROOT',
+                    title: `Identify Root Candidate '${rootVal}'`,
+                    desc: `Current root of this subtree is preorder[${pStart}] = ${rootVal}. Searching for '${rootVal}' in inorder array...`,
+                    pStart, iStart, iEnd,
+                    inIndex: null,
+                    leftSize: null,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                // Step 2: LOCATE INORDER & SPLIT
+                stepsList.push({
+                    type: 'LOCATE_INORDER',
+                    title: `Found '${rootVal}' at Inorder Index ${inIndex}`,
+                    desc: `Root '${rootVal}' splits Inorder into Left Subtree [indices ${iStart}..${inIndex - 1}] and Right Subtree [indices ${inIndex + 1}..${iEnd}].`,
+                    pStart, iStart, iEnd,
+                    inIndex,
+                    leftSize,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                // Mark node & edge as built
+                builtNodes.add(rootVal);
+                if (parentVal !== null) {
+                    builtEdges.add(`${parentVal}-${rootVal}`);
+                }
+
+                // Step 3: CREATE NODE
+                stepsList.push({
+                    type: 'CREATE_NODE',
+                    title: `Instantiated Node '${rootVal}'`,
+                    desc: `Created TreeNode(${rootVal}). ${parentVal !== null ? 'Connected to parent ' + parentVal + '.' : 'This is the main tree root.'}`,
+                    pStart, iStart, iEnd,
+                    inIndex,
+                    leftSize,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                // Step 4: RECURSE LEFT
+                stepsList.push({
+                    type: 'RECURSE_LEFT',
+                    title: `Recursing Left for Node '${rootVal}'`,
+                    desc: `Constructing LEFT subtree: preStart = ${pStart + 1}, inStart = ${iStart}, inEnd = ${inIndex - 1}.`,
+                    pStart, iStart, iEnd,
+                    inIndex,
+                    leftSize,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                const leftChild = buildTreeTrace(pStart + 1, iStart, inIndex - 1, rootVal, true);
+
+                // Step 5: RECURSE RIGHT
+                stepsList.push({
+                    type: 'RECURSE_RIGHT',
+                    title: `Recursing Right for Node '${rootVal}'`,
+                    desc: `Left child done. Now constructing RIGHT subtree: preStart = preStart + leftSize + 1 = ${pStart} + ${leftSize} + 1 = ${pStart + leftSize + 1}, inStart = ${inIndex + 1}, inEnd = ${iEnd}.`,
+                    pStart, iStart, iEnd,
+                    inIndex,
+                    leftSize,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                const rightChild = buildTreeTrace(pStart + leftSize + 1, inIndex + 1, iEnd, rootVal, false);
+
+                // Step 6: RETURN NODE
+                stepsList.push({
+                    type: 'RETURN_NODE',
+                    title: `Subtree at '${rootVal}' Complete`,
+                    desc: `Both left and right subtrees attached to node '${rootVal}'. Returning completed node to caller.`,
+                    pStart, iStart, iEnd,
+                    inIndex,
+                    leftSize,
+                    rootVal,
+                    stack: cloneStack(stack),
+                    builtNodes: new Set(builtNodes),
+                    builtEdges: new Set(builtEdges),
+                    activeVal: rootVal
+                });
+
+                stack.pop();
+                return rootVal;
+            }
+
+            buildTreeTrace(0, 0, inorder.length - 1);
+
+            // Final Step
+            stepsList.push({
+                type: 'FINISH',
+                title: 'Reconstruction Complete! 🎉',
+                desc: 'The binary tree has been fully reconstructed from the preorder and inorder arrays.',
+                pStart: null, iStart: null, iEnd: null, inIndex: null, leftSize: null, rootVal: null,
+                stack: [],
+                builtNodes: new Set(builtNodes),
+                builtEdges: new Set(builtEdges),
+                activeVal: null
+            });
+
+            return stepsList;
+        }
+
+        function renderArrayContainers() {
+            const preContainer = document.getElementById('preorderContainer');
+            const inContainer = document.getElementById('inorderContainer');
+
+            document.getElementById('arrayLengthBadge').innerText = `N = ${currentPreorder.length}`;
+
+            preContainer.innerHTML = currentPreorder.map((val, idx) => `
+                <div id="pre-node-${idx}" class="array-node flex flex-col items-center min-w-[44px]">
+                    <span class="text-[10px] mono text-slate-400 mb-1">i=${idx}</span>
+                    <div class="w-11 h-11 rounded-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center font-bold text-sm text-slate-200 shadow-md transition-all">
+                        ${val}
+                    </div>
+                    <span id="pre-tag-${idx}" class="text-[10px] mono font-semibold mt-1 h-4 text-amber-400"></span>
+                </div>
+            `).join('');
+
+            inContainer.innerHTML = currentInorder.map((val, idx) => `
+                <div id="in-node-${idx}" class="array-node flex flex-col items-center min-w-[44px]">
+                    <span class="text-[10px] mono text-slate-400 mb-1">i=${idx}</span>
+                    <div class="w-11 h-11 rounded-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center font-bold text-sm text-slate-200 shadow-md transition-all">
+                        ${val}
+                    </div>
+                    <span id="in-tag-${idx}" class="text-[10px] mono font-semibold mt-1 h-4 text-cyan-400"></span>
+                </div>
+            `).join('');
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Scrub Bar & Counter
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Step Text & Tag
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Variable Badges
+            document.getElementById('valPreStart').innerText = (step.pStart !== null) ? step.pStart : '-';
+            document.getElementById('valInRange').innerText = (step.iStart !== null && step.iEnd !== null) ? `${step.iStart}..${step.iEnd}` : '-';
+            document.getElementById('valInIndex').innerText = (step.inIndex !== null) ? step.inIndex : '-';
+            document.getElementById('valLeftSize').innerText = (step.leftSize !== null) ? step.leftSize : '-';
+
+            // Dynamic Math Box
+            const formulaBox = document.getElementById('formulaBox');
+            if (step.type === 'LOCATE_INORDER' || step.type === 'CREATE_NODE' || step.type === 'RECURSE_LEFT' || step.type === 'RECURSE_RIGHT') {
+                formulaBox.innerHTML = `
+                    <div class="text-emerald-400 font-semibold">leftSubtreeSize = inIndex - inStart = ${step.inIndex} - ${step.iStart} = <span class="text-amber-300 font-bold">${step.leftSize}</span></div>
+                    <div class="text-slate-400 text-[11px] mt-1">Left Child preStart = preStart + 1 = ${step.pStart + 1}</div>
+                    <div class="text-slate-400 text-[11px]">Right Child preStart = preStart + leftSize + 1 = ${step.pStart} + ${step.leftSize} + 1 = ${step.pStart + step.leftSize + 1}</div>
+                `;
+            } else if (step.type === 'BASE_CASE') {
+                formulaBox.innerHTML = `
+                    <div class="text-rose-400 font-semibold">inStart (${step.iStart}) > inEnd (${step.iEnd})</div>
+                    <div class="text-slate-400 text-[11px]">Empty interval. Returns null.</div>
+                `;
+            } else if (step.type === 'FINISH') {
+                formulaBox.innerHTML = `
+                    <div class="text-emerald-400 font-semibold">Tree Rebuilding Completed Successfully!</div>
+                    <div class="text-slate-400 text-[11px]">All recursive call frames popped.</div>
+                `;
+            } else {
+                formulaBox.innerHTML = `
+                    <div class="text-cyan-400">Current Root Candidate = preorder[${step.pStart}] = ${step.rootVal}</div>
+                    <div class="text-slate-400 text-[11px]">Subtree Inorder Range: indices ${step.iStart} to ${step.iEnd}</div>
+                `;
+            }
+
+            // Preorder highlights
+            currentPreorder.forEach((_, idx) => {
+                const node = document.getElementById(`pre-node-${idx}`)?.children[1];
+                const tag = document.getElementById(`pre-tag-${idx}`);
+                if (!node || !tag) return;
+
+                node.className = "w-11 h-11 rounded-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center font-bold text-sm text-slate-200 shadow-md transition-all";
+                tag.innerText = "";
+
+                if (step.pStart === idx) {
+                    node.className = "w-11 h-11 rounded-xl bg-amber-500/20 border-2 border-amber-400 text-amber-300 flex items-center justify-center font-bold text-sm shadow-lg shadow-amber-950/50 scale-105 pulse-glow";
+                    tag.innerText = "preStart";
+                }
+            });
+
+            // Inorder highlights
+            currentInorder.forEach((_, idx) => {
+                const node = document.getElementById(`in-node-${idx}`)?.children[1];
+                const tag = document.getElementById(`in-tag-${idx}`);
+                if (!node || !tag) return;
+
+                node.className = "w-11 h-11 rounded-xl bg-slate-800 border-2 border-slate-700 flex items-center justify-center font-bold text-sm text-slate-200 shadow-md transition-all";
+                tag.innerText = "";
+
+                if (step.iStart !== null && step.iEnd !== null && idx >= step.iStart && idx <= step.iEnd) {
+                    node.classList.add("bg-slate-700/60", "border-cyan-500/50");
+                }
+
+                if (step.inIndex !== null && idx >= step.iStart && idx < step.inIndex) {
+                    node.classList.add("border-indigo-500/80", "bg-indigo-500/20");
+                }
+
+                if (step.inIndex !== null && idx > step.inIndex && idx <= step.iEnd) {
+                    node.classList.add("border-fuchsia-500/80", "bg-fuchsia-500/20");
+                }
+
+                if (step.inIndex === idx) {
+                    node.className = "w-11 h-11 rounded-xl bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 flex items-center justify-center font-bold text-sm shadow-lg shadow-emerald-950/50 scale-105 pulse-emerald";
+                    tag.innerText = "inIndex";
+                } else if (step.iStart === idx && step.iEnd === idx) {
+                    tag.innerText = "inStart/End";
+                } else if (step.iStart === idx) {
+                    tag.innerText = "inStart";
+                } else if (step.iEnd === idx) {
+                    tag.innerText = "inEnd";
+                }
+            });
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-400 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((frame, depth) => `
+                    <div class="p-2.5 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-purple-950/40 border-purple-500/60 text-purple-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-purple-400' : 'bg-slate-600'}"></span>
+                            buildTree(pre:${frame.pStart}, in:${frame.iStart}..${frame.iEnd})
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            ${frame.rootVal !== null ? 'root:' + frame.rootVal : 'null'}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Render SVG Tree
+            renderSvgTree(step);
+        }
+
+        function renderSvgTree(step) {
+            const svg = document.getElementById('treeSvg');
+            if (!refTreeLayout || !refTreeLayout.root) return;
+
+            const svgWidth = 600;
+            const svgHeight = 340;
+            const N = refTreeLayout.nodeCount;
+            const maxDepth = refTreeLayout.maxDepth || 1;
+
+            const levelHeight = Math.min(65, (svgHeight - 70) / (maxDepth + 1));
+            const marginX = 40;
+
+            const coords = new Map();
+
+            function computeCoords(node) {
+                if (!node) return;
+                const x = marginX + (node.inIndex + 0.5) * ((svgWidth - 2 * marginX) / N);
+                const y = 45 + node.depth * levelHeight;
+                coords.set(node.val, { x, y, val: node.val });
+                computeCoords(node.left);
+                computeCoords(node.right);
+            }
+
+            computeCoords(refTreeLayout.root);
+
+            // Render Edges
+            let edgesSvg = '';
+            function renderEdges(node) {
+                if (!node) return;
+                const parentCoord = coords.get(node.val);
+
+                if (node.left) {
+                    const childCoord = coords.get(node.left.val);
+                    const edgeKey = `${node.val}-${node.left.val}`;
+                    const isBuilt = step.builtEdges.has(edgeKey);
+                    const isCurrent = step.activeVal === node.val || step.activeVal === node.left.val;
+
+                    edgesSvg += `
+                        <line x1="${parentCoord.x}" y1="${parentCoord.y}" x2="${childCoord.x}" y2="${childCoord.y}" 
+                              stroke="${isBuilt ? '#10b981' : isCurrent ? '#06b6d4' : '#334155'}" 
+                              stroke-width="${isBuilt || isCurrent ? '2.5' : '1.5'}" 
+                              stroke-dasharray="${isBuilt ? 'none' : '4 4'}" 
+                              class="tree-edge" />
+                    `;
+                    renderEdges(node.left);
+                }
+
+                if (node.right) {
+                    const childCoord = coords.get(node.right.val);
+                    const edgeKey = `${node.val}-${node.right.val}`;
+                    const isBuilt = step.builtEdges.has(edgeKey);
+                    const isCurrent = step.activeVal === node.val || step.activeVal === node.right.val;
+
+                    edgesSvg += `
+                        <line x1="${parentCoord.x}" y1="${parentCoord.y}" x2="${childCoord.x}" y2="${childCoord.y}" 
+                              stroke="${isBuilt ? '#10b981' : isCurrent ? '#06b6d4' : '#334155'}" 
+                              stroke-width="${isBuilt || isCurrent ? '2.5' : '1.5'}" 
+                              stroke-dasharray="${isBuilt ? 'none' : '4 4'}" 
+                              class="tree-edge" />
+                    `;
+                    renderEdges(node.right);
+                }
+            }
+
+            renderEdges(refTreeLayout.root);
+
+            // Render Nodes
+            let nodesSvg = '';
+            coords.forEach((coord, val) => {
+                const isBuilt = step.builtNodes.has(val);
+                const isActive = step.activeVal === val;
+
+                let fill = '#0f172a';
+                let stroke = '#334155';
+                let textColor = '#64748b';
+                let glow = '';
+
+                if (isActive) {
+                    fill = '#0284c7';
+                    stroke = '#38bdf8';
+                    textColor = '#ffffff';
+                    glow = 'filter="drop-shadow(0px 0px 8px rgba(56, 189, 248, 0.8))"';
+                } else if (isBuilt) {
+                    fill = '#065f46';
+                    stroke = '#34d399';
+                    textColor = '#ecfdf5';
+                }
+
+                nodesSvg += `
+                    <g class="tree-node" transform="translate(${coord.x}, ${coord.y})" ${glow}>
+                        <circle r="18" fill="${fill}" stroke="${stroke}" stroke-width="2.5" />
+                        <text y="4" text-anchor="middle" font-family="Fira Code, monospace" font-size="12" font-weight="bold" fill="${textColor}">
+                            ${val}
+                        </text>
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = `${edgesSvg}${nodesSvg}`;
+
+            // Status Badge
+            const statusBadge = document.getElementById('treeStatusBadge');
+            if (step.type === 'FINISH') {
+                statusBadge.innerText = 'Complete';
+                statusBadge.className = 'text-[11px] px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+            } else if (step.builtNodes.size > 0) {
+                statusBadge.innerText = `Building (${step.builtNodes.size}/${N})`;
+                statusBadge.className = 'text-[11px] px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/30';
+            } else {
+                statusBadge.innerText = 'Empty';
+                statusBadge.className = 'text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300';
+            }
+        }
+
+        function loadExample(exampleIndex) {
+            stopPlay();
+            const example = EXAMPLES[exampleIndex];
+            currentPreorder = [...example.preorder];
+            currentInorder = [...example.inorder];
+
+            refTreeLayout = calculateTreeLayout(currentPreorder, currentInorder);
+            steps = generateAlgorithmSteps(currentPreorder, currentInorder);
+
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderArrayContainers();
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEventListeners() {
+            document.getElementById('exampleSelect').addEventListener('change', (e) => {
+                loadExample(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            // Keyboard Shortcuts
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                } else if (e.key === 'r' || e.key === 'R') {
+                    document.getElementById('resetBtn').click();
+                }
+            });
+
+            // Custom Input Modal Handlers
+            const modal = document.getElementById('customModal');
+            document.getElementById('customInputBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const preStr = document.getElementById('customPreorder').value;
+                const inStr = document.getElementById('customInorder').value;
+                const errorBox = document.getElementById('modalError');
+
+                try {
+                    const pre = preStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+                    const inArr = inStr.split(',').map(s => parseInt(s.trim())).filter(n => !isNaN(n));
+
+                    if (pre.length === 0 || inArr.length === 0) {
+                        throw new Error('Arrays cannot be empty.');
+                    }
+                    if (pre.length !== inArr.length) {
+                        throw new Error(`Array size mismatch: Preorder length is ${pre.length}, but Inorder length is ${inArr.length}.`);
+                    }
+
+                    const preSorted = [...pre].sort((a,b)=>a-b);
+                    const inSorted = [...inArr].sort((a,b)=>a-b);
+                    if (JSON.stringify(preSorted) !== JSON.stringify(inSorted)) {
+                        throw new Error('Preorder and Inorder must contain the exact same unique set of numbers.');
+                    }
+
+                    currentPreorder = pre;
+                    currentInorder = inArr;
+                    refTreeLayout = calculateTreeLayout(currentPreorder, currentInorder);
+                    steps = generateAlgorithmSteps(currentPreorder, currentInorder);
+
+                    document.getElementById('stepProgress').max = steps.length - 1;
+                    currentStepIndex = 0;
+
+                    renderArrayContainers();
+                    renderStep(0);
+
+                    modal.classList.add('hidden');
+                } catch (err) {
+                    errorBox.innerText = err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initApp() {
+            loadExample(0);
+            bindEventListeners();
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
