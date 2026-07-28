@@ -1,0 +1,883 @@
+<!DOCTYPE html>
+<html lang="ro" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Permutation in String Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .char-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .window-box {
+            transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.5s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.6); }
+            50% { box-shadow: 0 0 0 8px rgba(16, 185, 129, 0); }
+        }
+        .pulse-rose {
+            animation: pulse-rose-glow 1.5s infinite;
+        }
+        @keyframes pulse-rose-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.6); }
+            50% { box-shadow: 0 0 0 8px rgba(244, 63, 94, 0); }
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.15);
+            border-left: 3px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950">
+                    <i class="fa-solid fa-sliders text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Permutation in String
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">O(N) Fixed Window</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Vizualizator Interactiv: Fereastră Fixă, Map Parity & Ștergere Chei cu Frecvență 0</p>
+                </div>
+            </div>
+
+            <!-- Preset Selection & Custom Input -->
+            <div class="flex items-center gap-3 w-full sm:w-auto">
+                <div class="relative flex-1 sm:w-80">
+                    <select id="exampleSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Potrivire Standard (s1="ab", s2="eidbaooo")</option>
+                        <option value="1">2. Curățare Cheie 0 (s1="adc", s2="dcda")</option>
+                        <option value="2">3. Fără Permutare (s1="hello", s2="ooolleoo")</option>
+                        <option value="3">4. Potrivire la Final (s1="ab", s2="eidboaooab")</option>
+                        <option value="4">5. Fereastră cu Caractere Duble (s1="aab", s2="eidbaaoo")</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customModalBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-400 font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Control Bar -->
+        <section class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            <!-- Navigation Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="Primul Pas" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Pasul Anterior (Săgeată Stânga)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Spațiu)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Pasul Următor (Săgeată Dreapta)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Ultimul Pas" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Resetare" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-amber-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Pas 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Selector -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1800">0.5x Viteză</option>
+                        <option value="1100" selected>1.0x Viteză</option>
+                        <option value="600">1.8x Viteză</option>
+                        <option value="300">3.0x Viteză</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Visual String Workspace -->
+        <section class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 lg:p-6 shadow-xl flex flex-col gap-6">
+            
+            <!-- Target String s1 Card -->
+            <div class="flex flex-col gap-2">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-amber-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-bullseye"></i> Target String s1 (Lungime: <span id="s1LenBadge">0</span>)
+                    </span>
+                    <span class="text-xs text-slate-400 mono">Fereastra are Dimensiunea Fixă = |s1|</span>
+                </div>
+                <div id="s1Container" class="flex items-center gap-2 overflow-x-auto py-2">
+                    <!-- Populated dynamically via JS -->
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800/80"></div>
+
+            <!-- Search String s2 with Sliding Window Frame -->
+            <div class="flex flex-col gap-3 relative">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs font-semibold text-cyan-400 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-magnifying-glass font-bold"></i> Search String s2 (Glisare Fereastră)
+                    </span>
+                    <!-- Indicators Legend -->
+                    <div class="flex items-center gap-4 text-xs">
+                        <span class="flex items-center gap-1.5 text-rose-400"><span class="w-2.5 h-2.5 rounded-full bg-rose-500"></span> charOut (Ieșire: r - |s1|)</span>
+                        <span class="flex items-center gap-1.5 text-emerald-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> charIn (Intrare: r)</span>
+                    </div>
+                </div>
+
+                <!-- s2 Characters Row Container -->
+                <div class="relative py-4 overflow-x-auto min-h-[110px]">
+                    <div id="s2Container" class="flex items-center gap-3 relative min-w-max px-2">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: HashMap State Monitors -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- HashMaps Comparison Grid -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-equals text-cyan-400"></i> Verificare Egalitate HashMaps
+                        </h2>
+                        <span id="matchStatusBadge" class="text-xs font-bold px-3 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
+                            Nicio Verificare
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <!-- s1_count Map -->
+                        <div class="bg-slate-950 border border-amber-500/30 rounded-xl p-3.5 flex flex-col gap-2">
+                            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-amber-300 mono">s1_count</span>
+                                <span class="text-[10px] text-slate-400">Țintă Frecvențe</span>
+                            </div>
+                            <div id="s1MapContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[40px] items-center">
+                                <!-- JS Populated -->
+                            </div>
+                        </div>
+
+                        <!-- window_count Map -->
+                        <div class="bg-slate-950 border border-cyan-500/30 rounded-xl p-3.5 flex flex-col gap-2">
+                            <div class="flex items-center justify-between border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-cyan-300 mono">window_count</span>
+                                <span class="text-[10px] text-slate-400">Fereastra Curentă</span>
+                            </div>
+                            <div id="windowMapContainer" class="flex flex-wrap gap-1.5 pt-1 min-h-[40px] items-center">
+                                <!-- JS Populated -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Equality Rule Callout -->
+                    <div id="mapRuleNotice" class="bg-slate-950/80 border border-slate-800/80 rounded-xl p-3 text-xs text-slate-300 flex items-start gap-2.5">
+                        <i class="fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5"></i>
+                        <p id="mapRuleText">
+                            În Java, `window_count.equals(s1_count)` verifică dacă ambele Map-uri au exact aceleași chei și valori. Dacă numărul unui caracter scade la 0, el **trebuie șters** cu `.remove()`, altfel egalitatea va eșua din cauza cheii cu valoare 0!
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Step Explanation & Why Box -->
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initializare
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Ce facem și DE CE?</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Gata de Pornire</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[50px]">
+                        Apasă pe Play sau Next pentru a vizualiza pas cu pas cum fereastra glisează peste s2 și cum sunt actualizate frecvențele în Map.
+                    </p>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Code Trace Panel -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <div class="bg-slate-900 border border-slate-800/80 rounded-2xl p-4 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Execuție Cod Java Pas cu Pas
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">O(N) Time | O(1) Space</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-1 overflow-x-auto text-slate-300 flex-1">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public boolean checkInclusion(String s1, String s2) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6">if (s1 == null || s2 == null || s1.length() > s2.length()) return false;</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 1. Construim s1_count map pentru s1</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-6">HashMap&lt;Character, Integer&gt; s1_count = new HashMap&lt;&gt;(26);</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-6">for (char c : s1.toCharArray()) s1_count.put(c, s1_count.getOrDefault(c, 0) + 1);</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 2. Inițializăm window_count pentru prima fereastră [0...wSize-1]</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded pl-6">HashMap&lt;Character, Integer&gt; window_count = new HashMap&lt;&gt;(26);</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded pl-6">for (int i = 0; i &lt; wSize; i++) window_count.put(s2.charAt(i), ...);</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-6">if (window_count.equals(s1_count)) return true;</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 3. Glisăm fereastra de la indexul 'wSize' până la s2.length() - 1</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded pl-6">for (int r = wSize; r &lt; s2.length(); r++) {</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-10 text-emerald-400">// ADAUGĂM caracterul care intră în dreapta</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded pl-10">char charIn = s2.charAt(r);</div>
+                        <div id="code-line-14" class="code-line px-2 py-0.5 rounded pl-10">window_count.put(charIn, window_count.getOrDefault(charIn, 0) + 1);</div>
+                        <div id="code-line-15" class="code-line px-2 py-0.5 rounded pl-10 text-rose-400">// SCOATEM caracterul care iese prin stânga</div>
+                        <div id="code-line-16" class="code-line px-2 py-0.5 rounded pl-10">char charOut = s2.charAt(r - wSize);</div>
+                        <div id="code-line-17" class="code-line px-2 py-0.5 rounded pl-10">window_count.put(charOut, window_count.get(charOut) - 1);</div>
+                        <div id="code-line-18" class="code-line px-2 py-0.5 rounded pl-10 text-amber-400">// CURĂȚARE CHEIE CU VECIN 0!</div>
+                        <div id="code-line-19" class="code-line px-2 py-0.5 rounded pl-10">if (window_count.get(charOut) == 0) window_count.remove(charOut);</div>
+                        <div id="code-line-20" class="code-line px-2 py-0.5 rounded pl-10">// Verificăm dacă Map-urile sunt egale</div>
+                        <div id="code-line-21" class="code-line px-2 py-0.5 rounded pl-10">if (window_count.equals(s1_count)) return true;</div>
+                        <div id="code-line-22" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-23" class="code-line px-2 py-0.5 rounded pl-6">return false;</div>
+                        <div id="code-line-24" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Inputs Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-cyan-400"></i> Introduceți Stringuri Custom
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-amber-300 mb-1">Target String s1</label>
+                    <input id="inputS1" type="text" value="ab" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div>
+                    <label class="block font-medium text-cyan-300 mb-1">Search String s2</label>
+                    <input id="inputS2" type="text" value="eidbaooo" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">
+                </div>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Mesaj eroare
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Anulează</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-950">Construiește Vizualizatorul</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Preset Datasets
+        const PRESETS = [
+            { name: "1. Potrivire Standard (s1=\"ab\", s2=\"eidbaooo\")", s1: "ab", s2: "eidbaooo" },
+            { name: "2. Curățare Cheie 0 (s1=\"adc\", s2=\"dcda\")", s1: "adc", s2: "dcda" },
+            { name: "3. Fără Permutare (s1=\"hello\", s2=\"ooolleoo\")", s1: "hello", s2: "ooolleoo" },
+            { name: "4. Potrivire la Final (s1=\"ab\", s2=\"eidboaooab\")", s1: "ab", s2: "eidboaooab" },
+            { name: "5. Fereastră cu Caractere Duble (s1=\"aab\", s2=\"eidbaaoo\")", s1: "aab", s2: "eidbaaoo" }
+        ];
+
+        // State variables
+        let s1 = "ab";
+        let s2 = "eidbaooo";
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1100;
+
+        // Helper to clone a JS Map
+        function cloneMap(map) {
+            return new Map(map);
+        }
+
+        // Helper to check map equality (simulating Java HashMap.equals)
+        function mapsEqual(map1, map2) {
+            if (map1.size !== map2.size) return false;
+            for (let [key, val] of map1.entries()) {
+                if (map2.get(key) !== val) return false;
+            }
+            return true;
+        }
+
+        // Trace algorithm and generate discrete visualization steps
+        function generateAlgorithmSteps(s1Str, s2Str) {
+            const stepsList = [];
+            const wSize = s1Str.length;
+
+            // Guard case: s1 longer than s2
+            if (s1Str.length > s2Str.length) {
+                stepsList.push({
+                    type: 'ERROR_GUARD',
+                    title: 'Garda de Lungime Activată',
+                    desc: `s1 (lungime ${s1Str.length}) este mai lung decât s2 (lungime ${s2Str.length}). Este imposibil ca s2 să conțină o permutare a lui s1! Se returnează false.`,
+                    s1Map: new Map(),
+                    windowMap: new Map(),
+                    windowLeft: null,
+                    windowRight: null,
+                    charInIndex: null,
+                    charOutIndex: null,
+                    codeLine: 2,
+                    isMatch: false,
+                    removedKey: null
+                });
+                return stepsList;
+            }
+
+            // STEP 1: Build s1_count
+            const s1Map = new Map();
+            for (let i = 0; i < s1Str.length; i++) {
+                const char = s1Str.charAt(i);
+                s1Map.set(char, (s1Map.get(char) || 0) + 1);
+            }
+
+            stepsList.push({
+                type: 'BUILD_S1_MAP',
+                title: 'Pasul 1: Construim Map-ul Țintă s1_count',
+                desc: `Am numărat frecvența fiecărui caracter din s1 ("${s1Str}"). Fereastra noastră din s2 va trebui să aibă EXACT aceeași dimensiune (${wSize}) și aceleași frecvențe.`,
+                s1Map: cloneMap(s1Map),
+                windowMap: new Map(),
+                windowLeft: null,
+                windowRight: null,
+                charInIndex: null,
+                charOutIndex: null,
+                codeLine: 5,
+                isMatch: false,
+                removedKey: null
+            });
+
+            // STEP 2: Build initial window_count [0 ... wSize - 1]
+            const windowMap = new Map();
+            for (let i = 0; i < wSize; i++) {
+                const char = s2Str.charAt(i);
+                windowMap.set(char, (windowMap.get(char) || 0) + 1);
+            }
+
+            const initialMatch = mapsEqual(s1Map, windowMap);
+
+            stepsList.push({
+                type: 'INIT_WINDOW',
+                title: `Pasul 2: Inițializăm Prima Fereastră [0 ... ${wSize - 1}]`,
+                desc: `Am încărcat primele ${wSize} caractere din s2 în window_count. Fereastra acoperă sub-stringul "${s2Str.substring(0, wSize)}".\n` +
+                      `Verificare Egalitate: window_count.equals(s1_count) = ${initialMatch ? 'Adevărat ⭐' : 'Fals'}.`,
+                s1Map: cloneMap(s1Map),
+                windowMap: cloneMap(windowMap),
+                windowLeft: 0,
+                windowRight: wSize - 1,
+                charInIndex: null,
+                charOutIndex: null,
+                codeLine: 9,
+                isMatch: initialMatch,
+                removedKey: null
+            });
+
+            if (initialMatch) {
+                stepsList.push({
+                    type: 'MATCH_FOUND',
+                    title: 'Permutare Găsită la Prima Fereastră! 🎉',
+                    desc: `Fereastra inițială "${s2Str.substring(0, wSize)}" de la indicii [0 ... ${wSize - 1}] are exact aceleași frecvențe ca s1! Se returnează true.`,
+                    s1Map: cloneMap(s1Map),
+                    windowMap: cloneMap(windowMap),
+                    windowLeft: 0,
+                    windowRight: wSize - 1,
+                    charInIndex: null,
+                    charOutIndex: null,
+                    codeLine: 9,
+                    isMatch: true,
+                    removedKey: null
+                });
+                return stepsList;
+            }
+
+            // STEP 3: Sliding Window Loop
+            for (let r = wSize; r < s2Str.length; r++) {
+                const charIn = s2Str.charAt(r);
+                const charOutIndex = r - wSize;
+                const charOut = s2Str.charAt(charOutIndex);
+                const newWindowLeft = charOutIndex + 1;
+                const newWindowRight = r;
+
+                // Action A: Add charIn
+                windowMap.set(charIn, (windowMap.get(charIn) || 0) + 1);
+
+                stepsList.push({
+                    type: 'ADD_CHAR_IN',
+                    title: `Pasul 3a: Intrare Caracter Nou charIn = '${charIn}' (Index ${r})`,
+                    desc: `Fereastra glisează spre dreapta! Caracterul '${charIn}' de la indexul ${r} intră în fereastră. Incrementăm frecvența lui '${charIn}' în window_count.`,
+                    s1Map: cloneMap(s1Map),
+                    windowMap: cloneMap(windowMap),
+                    windowLeft: charOutIndex, // still covering old start during transition
+                    windowRight: r,
+                    charInIndex: r,
+                    charOutIndex: null,
+                    codeLine: 14,
+                    isMatch: false,
+                    removedKey: null
+                });
+
+                // Action B: Remove charOut
+                const prevOutCount = windowMap.get(charOut);
+                windowMap.set(charOut, prevOutCount - 1);
+
+                let keyWasRemoved = false;
+                if (windowMap.get(charOut) === 0) {
+                    windowMap.delete(charOut);
+                    keyWasRemoved = true;
+                }
+
+                stepsList.push({
+                    type: 'REMOVE_CHAR_OUT',
+                    title: `Pasul 3b: Ieșire Caracter Vechi charOut = '${charOut}' (Index ${charOutIndex})`,
+                    desc: `Caracterul '${charOut}' de la indexul ${charOutIndex} a ieșit din fereastră. Scădem frecvența lui cu 1.` +
+                          (keyWasRemoved ? `\n\n⚠️ REGULĂ CRUCIALĂ: Frecvența lui '${charOut}' a ajuns la 0! Am executat window_count.remove('${charOut}') pentru ca Map.equals() să nu eșueze din cauza cheilor cu valoare 0.` : ''),
+                    s1Map: cloneMap(s1Map),
+                    windowMap: cloneMap(windowMap),
+                    windowLeft: newWindowLeft,
+                    windowRight: newWindowRight,
+                    charInIndex: r,
+                    charOutIndex: charOutIndex,
+                    codeLine: keyWasRemoved ? 19 : 17,
+                    isMatch: false,
+                    removedKey: keyWasRemoved ? charOut : null
+                });
+
+                // Action C: Check Map Parity
+                const isMatch = mapsEqual(s1Map, windowMap);
+
+                stepsList.push({
+                    type: isMatch ? 'MATCH_FOUND' : 'EVALUATE_WINDOW',
+                    title: isMatch ? `Permutare Găsită la Indicii [${newWindowLeft} ... ${newWindowRight}]! 🎉` : `Verificare Fereastră [${newWindowLeft} ... ${newWindowRight}]`,
+                    desc: isMatch ? 
+                        `AM GĂSIT POTRIVIRE! Sub-stringul "${s2Str.substring(newWindowLeft, newWindowRight + 1)}" la indicii [${newWindowLeft} ... ${newWindowRight}] este o permutare validă a lui s1 ("${s1Str}"). Se returnează true!` :
+                        `Fereastra curentă este "${s2Str.substring(newWindowLeft, newWindowRight + 1)}". ` +
+                        `window_count.equals(s1_count) = false. Continuăm glisarea...`,
+                    s1Map: cloneMap(s1Map),
+                    windowMap: cloneMap(windowMap),
+                    windowLeft: newWindowLeft,
+                    windowRight: newWindowRight,
+                    charInIndex: r,
+                    charOutIndex: charOutIndex,
+                    codeLine: 21,
+                    isMatch: isMatch,
+                    removedKey: null
+                });
+
+                if (isMatch) {
+                    return stepsList;
+                }
+            }
+
+            // Final Step if loop finished without match
+            stepsList.push({
+                type: 'NO_MATCH_FINISH',
+                title: 'Glisare Completă: Nicio Permutare Găsită ❌',
+                desc: `Fereastra a parcurs întreg stringul s2 ("${s2Str}"). Nicio fereastră de dimensiune ${wSize} nu a avut exact aceleași frecvențe ca s1 ("${s1Str}"). Se returnează false.`,
+                s1Map: cloneMap(s1Map),
+                windowMap: cloneMap(windowMap),
+                windowLeft: s2Str.length - wSize,
+                windowRight: s2Str.length - 1,
+                charInIndex: null,
+                charOutIndex: null,
+                codeLine: 23,
+                isMatch: false,
+                removedKey: null
+            });
+
+            return stepsList;
+        }
+
+        // Render step UI
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Slider & Step Counter
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Pas ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Text Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Status Badge
+            const matchBadge = document.getElementById('matchStatusBadge');
+            if (step.isMatch) {
+                matchBadge.innerText = "MATCH GĂSIT! (EGALITATE MAPS)";
+                matchBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 animate-bounce";
+            } else if (step.type === 'NO_MATCH_FINISH') {
+                matchBadge.innerText = "FĂRĂ POTRIVIRE (RETURN FALSE)";
+                matchBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-rose-500/20 text-rose-300 border border-rose-500/40";
+            } else {
+                matchBadge.innerText = "SINEGALITATE / ÎN CURS";
+                matchBadge.className = "text-xs font-bold px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700";
+            }
+
+            // Highlight Active Code Line
+            for (let i = 1; i <= 24; i++) {
+                const line = document.getElementById(`code-line-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Render HashMaps
+            renderHashMaps(step);
+
+            // Render Visual Strings s1 and s2 with Sliding Window Frame
+            renderVisualStrings(step);
+        }
+
+        // Render HashMap Cards
+        function renderHashMaps(step) {
+            const s1Container = document.getElementById('s1MapContainer');
+            const windowContainer = document.getElementById('windowMapContainer');
+
+            // s1_count
+            if (step.s1Map.size === 0) {
+                s1Container.innerHTML = `<span class="text-xs text-slate-500 italic">Map Gol</span>`;
+            } else {
+                let html = '';
+                step.s1Map.forEach((count, char) => {
+                    html += `
+                        <div class="px-2.5 py-1 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 mono text-xs font-semibold flex items-center gap-1.5 shadow-sm">
+                            <span>'${char}':</span>
+                            <span class="text-slate-100 font-bold">${count}</span>
+                        </div>
+                    `;
+                });
+                s1Container.innerHTML = html;
+            }
+
+            // window_count
+            if (step.windowMap.size === 0) {
+                windowContainer.innerHTML = `<span class="text-xs text-slate-500 italic">Map Gol</span>`;
+            } else {
+                let html = '';
+                step.windowMap.forEach((count, char) => {
+                    const isTargetKey = step.s1Map.has(char);
+                    const targetCount = step.s1Map.get(char) || 0;
+                    const countMatches = (count === targetCount);
+
+                    let badgeColor = countMatches ? 'bg-emerald-500/20 border-emerald-500/40 text-emerald-300' : 
+                                     isTargetKey ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-300' :
+                                     'bg-slate-800 border-slate-700 text-slate-400';
+
+                    html += `
+                        <div class="px-2.5 py-1 rounded-lg border ${badgeColor} mono text-xs font-semibold flex items-center gap-1.5 shadow-sm transition-all">
+                            <span>'${char}':</span>
+                            <span class="text-slate-100 font-bold">${count}</span>
+                        </div>
+                    `;
+                });
+                windowContainer.innerHTML = html;
+            }
+
+            // Update Map Notice
+            const noticeText = document.getElementById('mapRuleText');
+            if (step.removedKey) {
+                noticeText.innerHTML = `<strong class="text-amber-400">⚡ ACȚIUNE CHEIE REDUSĂ LA 0:</strong> Cheia <code class="mono bg-slate-900 px-1 py-0.5 rounded text-amber-300">'${step.removedKey}'</code> a fost ȘTEARSĂ din <code class="mono text-cyan-300">window_count</code>! Fără <code class="mono text-cyan-300">remove('${step.removedKey}')</code>, Map-ul ar fi păstrat cheia cu valoarea 0, făcând <code class="mono text-cyan-300">window_count.equals(s1_count)</code> să returneze false!`;
+            } else {
+                noticeText.innerHTML = `În Java, <code class="mono text-cyan-300">window_count.equals(s1_count)</code> verifică dacă ambele Map-uri au exact aceleași chei și valori. Dacă numărul unui caracter scade la 0, el <strong>trebuie șters</strong> cu <code class="mono text-cyan-300">.remove()</code>!`;
+            }
+        }
+
+        // Render s1 and s2 Visual Cards
+        function renderVisualStrings(step) {
+            document.getElementById('s1LenBadge').innerText = s1.length;
+
+            // Render s1
+            const s1Container = document.getElementById('s1Container');
+            s1Container.innerHTML = s1.split('').map((char, idx) => `
+                <div class="char-card flex flex-col items-center">
+                    <span class="text-[10px] mono text-slate-500 mb-0.5">i=${idx}</span>
+                    <div class="w-10 h-10 rounded-xl bg-amber-500/10 border-2 border-amber-500/40 flex items-center justify-center font-bold text-sm text-amber-300 shadow-md">
+                        ${char}
+                    </div>
+                </div>
+            `).join('');
+
+            // Render s2 with Sliding Window Highlight
+            const s2Container = document.getElementById('s2Container');
+            const wSize = s1.length;
+
+            let s2Html = '';
+            for (let i = 0; i < s2.length; i++) {
+                const char = s2.charAt(i);
+                const isInWindow = (step.windowLeft !== null && i >= step.windowLeft && i <= step.windowRight);
+                const isCharIn = (step.charInIndex === i);
+                const isCharOut = (step.charOutIndex === i);
+
+                let cardStyle = "bg-slate-800/80 border-slate-700 text-slate-300";
+                let topTag = "";
+                let glowEffect = "";
+
+                if (step.isMatch && isInWindow) {
+                    cardStyle = "bg-emerald-500/30 border-2 border-emerald-400 text-emerald-200 scale-105 shadow-lg shadow-emerald-950";
+                } else if (isCharIn) {
+                    cardStyle = "bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 pulse-emerald scale-105";
+                    topTag = `<span class="text-[9px] font-bold text-emerald-400 uppercase tracking-tighter">charIn</span>`;
+                } else if (isCharOut) {
+                    cardStyle = "bg-rose-500/20 border-2 border-rose-400 text-rose-300 pulse-rose scale-105";
+                    topTag = `<span class="text-[9px] font-bold text-rose-400 uppercase tracking-tighter">charOut</span>`;
+                } else if (isInWindow) {
+                    cardStyle = "bg-cyan-500/20 border-2 border-cyan-400/80 text-cyan-200 font-bold";
+                }
+
+                s2Html += `
+                    <div class="char-card flex flex-col items-center relative min-w-[42px]">
+                        <span class="text-[10px] mono text-slate-500 mb-0.5">i=${i}</span>
+                        <div class="w-11 h-11 rounded-xl border flex flex-col items-center justify-center font-bold text-sm shadow-md ${cardStyle} transition-all">
+                            <span>${char}</span>
+                        </div>
+                        <div class="h-4 mt-1 text-center">
+                            ${topTag}
+                        </div>
+                    </div>
+                `;
+            }
+
+            s2Container.innerHTML = s2Html;
+        }
+
+        function loadExample(presetIndex) {
+            stopPlay();
+            const preset = PRESETS[presetIndex];
+            s1 = preset.s1;
+            s2 = preset.s2;
+
+            steps = generateAlgorithmSteps(s1, s2);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEventListeners() {
+            document.getElementById('exampleSelect').addEventListener('change', (e) => {
+                loadExample(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            // Keyboard Shortcuts
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+
+            // Custom Input Modal Handlers
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const s1Val = document.getElementById('inputS1').value.trim();
+                const s2Val = document.getElementById('inputS2').value.trim();
+                const errorBox = document.getElementById('modalError');
+
+                if (!s1Val || !s2Val) {
+                    errorBox.innerText = "Stringurile nu pot fi goale!";
+                    errorBox.classList.remove('hidden');
+                    return;
+                }
+
+                s1 = s1Val;
+                s2 = s2Val;
+
+                steps = generateAlgorithmSteps(s1, s2);
+                document.getElementById('stepProgress').max = steps.length - 1;
+                currentStepIndex = 0;
+
+                renderStep(0);
+                modal.classList.add('hidden');
+            });
+        }
+
+        function initApp() {
+            bindEventListeners();
+            loadExample(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
