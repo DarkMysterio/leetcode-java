@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HashMap Node Pointer Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fira+Code:wght@400;500;600&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .node-box {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            cursor: pointer;
+        }
+        .node-box:hover rect.bg-card {
+            stroke: #38bdf8;
+            stroke-width: 2.5;
+            filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.4));
+        }
+        .pointer-arrow {
+            transition: stroke 0.3s ease, stroke-width 0.3s ease;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-hidden">
+
+    <!-- Minimal Header Control Bar -->
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md px-4 lg:px-6 py-3 z-30 flex-shrink-0">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-3">
+            
+            <!-- App Title & Description -->
+            <div class="flex items-center gap-3">
+                <div class="p-2 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400">
+                    <i class="fa-solid fa-sitemap text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-base font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        HashMap &lt;Character, PrefixNode&gt; Visualizer
+                    </h1>
+                    <p class="text-xs text-slate-400">See how HashMap keys store memory pointers leading to child PrefixNode objects</p>
+                </div>
+            </div>
+
+            <!-- Example Presets & Quick Actions -->
+            <div class="flex items-center gap-2 flex-wrap justify-center">
+                <span class="text-xs text-slate-400 font-medium mr-1">Presets:</span>
+                <button id="presetBtn1" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-cyan-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-tree text-[10px]"></i> ["cat", "car", "do"]
+                </button>
+                <button id="presetBtn2" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-amber-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-tree text-[10px]"></i> ["app", "apple"]
+                </button>
+                <button id="presetBtn3" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs font-medium text-purple-300 rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-folder-tree text-[10px]"></i> ["tree", "trie"]
+                </button>
+
+                <div class="h-4 w-px bg-slate-800 mx-1 hidden sm:block"></div>
+
+                <!-- Custom Input -->
+                <div class="flex items-center gap-1.5">
+                    <input id="wordInput" type="text" placeholder="Add word..." class="bg-slate-950 border border-slate-700 text-xs text-slate-100 rounded-lg px-3 py-1.5 w-28 sm:w-36 mono focus:outline-none focus:border-cyan-500">
+                    <button id="insertBtn" class="px-3 py-1.5 bg-cyan-600 hover:bg-cyan-500 text-white text-xs font-semibold rounded-lg transition-all flex items-center gap-1 shadow-md shadow-cyan-950">
+                        <i class="fa-solid fa-plus text-[10px]"></i> Add
+                    </button>
+                </div>
+
+                <button id="clearBtn" title="Reset Tree" class="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-rose-400 rounded-lg transition-colors ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Fullscreen Interactive Canvas Workspace -->
+    <main class="flex-1 w-full h-full relative bg-slate-950 overflow-hidden flex items-center justify-center p-2">
+        
+        <!-- Legend Overlay -->
+        <div class="absolute top-4 left-4 z-20 bg-slate-900/90 border border-slate-800 backdrop-blur-md rounded-xl p-3 text-[11px] text-slate-300 flex flex-col gap-2 shadow-xl pointer-events-none">
+            <span class="font-bold text-slate-200 border-b border-slate-800 pb-1 flex items-center gap-1.5">
+                <i class="fa-solid fa-circle-info text-cyan-400"></i> How to Read the Canvas:
+            </span>
+            <div class="flex items-center gap-2">
+                <span class="w-3 h-3 rounded bg-slate-900 border border-cyan-500/50"></span>
+                <span><strong>PrefixNode Box</strong> = Object in Heap Memory</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 mono font-bold text-[10px]">'c'</span>
+                <span><strong>HashMap Key</strong> stored inside node</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="w-4 h-0.5 bg-cyan-400"></span>
+                <span><strong>Pointer Arrow</strong> $\rightarrow$ References child node</span>
+            </div>
+            <div class="flex items-center gap-2">
+                <span class="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 text-[10px] font-bold">isEnd: true</span>
+                <span>Complete word finishes here</span>
+            </div>
+        </div>
+
+        <!-- SVG Canvas Area -->
+        <svg id="treeSvg" class="w-full h-full min-h-[500px]" viewBox="0 0 1000 600" preserveAspectRatio="xMidYMid meet">
+            <defs>
+                <!-- Custom Arrowhead Markers -->
+                <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+                </marker>
+                <marker id="arrow-emerald" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#34d399" />
+                </marker>
+            </defs>
+            <!-- Rendered dynamically -->
+        </svg>
+
+    </main>
+
+    <script>
+        let globalIdCounter = 0;
+
+        class PrefixNode {
+            constructor(depth = 0) {
+                this.id = globalIdCounter++;
+                this.nextLetters = new Map(); // Map<char, PrefixNode>
+                this.isEndNode = false;
+                this.depth = depth;
+            }
+        }
+
+        let rootNode = new PrefixNode(0);
+
+        function resetTree() {
+            globalIdCounter = 0;
+            rootNode = new PrefixNode(0);
+        }
+
+        function insert(word) {
+            if (!word || word.trim() === '') return;
+            word = word.trim().toLowerCase();
+
+            let current = rootNode;
+            for (let i = 0; i < word.length; i++) {
+                const ch = word.charAt(i);
+                if (!current.nextLetters.has(ch)) {
+                    const newNode = new PrefixNode(i + 1);
+                    current.nextLetters.set(ch, newNode);
+                }
+                current = current.nextLetters.get(ch);
+            }
+            current.isEndNode = true;
+        }
+
+        function countTotalNodes(node) {
+            if (!node) return 0;
+            let count = 1;
+            for (let child of node.nextLetters.values()) {
+                count += countTotalNodes(child);
+            }
+            return count;
+        }
+
+        function computeSubtreeLeaves(node) {
+            if (!node) return 0;
+            if (node.nextLetters.size === 0) {
+                node.leafSpan = 1;
+                return 1;
+            }
+            let span = 0;
+            for (let child of node.nextLetters.values()) {
+                span += computeSubtreeLeaves(child);
+            }
+            node.leafSpan = span;
+            return span;
+        }
+
+        function renderSvgCanvas() {
+            const svg = document.getElementById('treeSvg');
+            computeSubtreeLeaves(rootNode);
+
+            const svgWidth = 1000;
+            const cardWidth = 150;
+            const cardHeaderHeight = 36;
+            const keyRowHeight = 26;
+
+            const nodeCoords = new Map();
+
+            // Calculate positions recursively
+            function layoutNodes(node, startX, endX, depth) {
+                if (!node) return;
+
+                const keysCount = node.nextLetters.size;
+                const nodeHeight = cardHeaderHeight + Math.max(1, keysCount) * keyRowHeight + 10;
+                const x = (startX + endX) / 2;
+                const y = 40 + depth * 140;
+
+                nodeCoords.set(node.id, {
+                    x,
+                    y,
+                    width: cardWidth,
+                    height: nodeHeight,
+                    node: node
+                });
+
+                let curX = startX;
+                const totalSpan = node.leafSpan || 1;
+                const widthPerLeaf = (endX - startX) / totalSpan;
+
+                node.nextLetters.forEach((childNode) => {
+                    const childWidth = childNode.leafSpan * widthPerLeaf;
+                    const childEndX = curX + childWidth;
+                    layoutNodes(childNode, curX, childEndX, depth + 1);
+                    curX = childEndX;
+                });
+            }
+
+            layoutNodes(rootNode, 40, svgWidth - 40, 0);
+
+            // 1. Draw Pointer Arrows first (so they sit behind boxes)
+            let arrowsSvg = '';
+
+            function drawArrows(node) {
+                if (!node) return;
+                const parentCoord = nodeCoords.get(node.id);
+                let keyIndex = 0;
+
+                node.nextLetters.forEach((childNode, charKey) => {
+                    const childCoord = nodeCoords.get(childNode.id);
+
+                    // Origin point: key badge center on parent card
+                    const startX = parentCoord.x + parentCoord.width / 2 - 25;
+                    const startY = parentCoord.y + cardHeaderHeight + (keyIndex * keyRowHeight) + (keyRowHeight / 2);
+
+                    // Destination point: top center of child card
+                    const endX = childCoord.x;
+                    const endY = childCoord.y - 2;
+
+                    // Smooth Bezier Curve Path
+                    const controlY1 = startY + 45;
+                    const controlY2 = endY - 45;
+
+                    arrowsSvg += `
+                        <g>
+                            <path d="M ${startX} ${startY} C ${startX} ${controlY1}, ${endX} ${controlY2}, ${endX} ${endY}"
+                                  fill="none" 
+                                  stroke="#38bdf8" 
+                                  stroke-width="2" 
+                                  marker-end="url(#arrow)" 
+                                  class="pointer-arrow opacity-80 hover:opacity-100 hover:stroke-amber-400" />
+                        </g>
+                    `;
+
+                    keyIndex++;
+                    drawArrows(childNode);
+                });
+            }
+
+            drawArrows(rootNode);
+
+            // 2. Draw Node Cards
+            let nodesSvg = '';
+
+            nodeCoords.forEach((coord) => {
+                const node = coord.node;
+                const isRoot = node.id === 0;
+                const isEnd = node.isEndNode;
+
+                const x = coord.x - coord.width / 2;
+                const y = coord.y;
+
+                // Build Map Row Items inside Card
+                let mapRowsSvg = '';
+                if (node.nextLetters.size === 0) {
+                    mapRowsSvg = `
+                        <text x="${x + coord.width / 2}" y="${y + cardHeaderHeight + 20}" 
+                              text-anchor="middle" font-family="Inter, sans-serif" font-size="10" fill="#64748b" font-style="italic">
+                            nextLetters: { } (Leaf)
+                        </text>
+                    `;
+                } else {
+                    let keyIdx = 0;
+                    node.nextLetters.forEach((childNode, charKey) => {
+                        const rowY = y + cardHeaderHeight + (keyIdx * keyRowHeight) + 16;
+                        
+                        mapRowsSvg += `
+                            <!-- Key Badge -->
+                            <rect x="${x + 12}" y="${rowY - 12}" width="24" height="18" rx="4" 
+                                  fill="#1e293b" stroke="#f59e0b" stroke-width="1" />
+                            <text x="${x + 24}" y="${rowY + 1}" text-anchor="middle" 
+                                  font-family="Fira Code, monospace" font-size="11" font-weight="bold" fill="#f59e0b">
+                                '${charKey}'
+                            </text>
+
+                            <!-- Pointer Arrow Label -->
+                            <text x="${x + 44}" y="${rowY + 1}" font-family="Fira Code, monospace" font-size="10" fill="#94a3b8">&rarr;</text>
+
+                            <!-- Child Node Memory Pointer -->
+                            <rect x="${x + 58}" y="${rowY - 12}" width="78" height="18" rx="4" 
+                                  fill="#0284c7" fill-opacity="0.2" stroke="#38bdf8" stroke-width="1" />
+                            <text x="${x + 97}" y="${rowY + 1}" text-anchor="middle" 
+                                  font-family="Fira Code, monospace" font-size="10" font-weight="bold" fill="#38bdf8">
+                                Node #${childNode.id}
+                            </text>
+                        `;
+                        keyIdx++;
+                    });
+                }
+
+                nodesSvg += `
+                    <g class="node-box">
+                        <!-- Main Card Container -->
+                        <rect class="bg-card" x="${x}" y="${y}" width="${coord.width}" height="${coord.height}" rx="12" 
+                              fill="#0f172a" stroke="${isEnd ? '#10b981' : '#334155'}" stroke-width="${isEnd ? '2.5' : '1.5'}" />
+
+                        <!-- Header Bar -->
+                        <rect x="${x}" y="${y}" width="${coord.width}" height="${cardHeaderHeight}" rx="12" 
+                              fill="${isRoot ? '#1e293b' : isEnd ? '#064e3b' : '#1e293b'}" fill-opacity="0.8" />
+                        
+                        <!-- Header Text -->
+                        <text x="${x + 12}" y="${y + 22}" font-family="Fira Code, monospace" font-size="11" font-weight="bold" fill="${isEnd ? '#34d399' : '#f1f5f9'}">
+                            ${isRoot ? 'Root (Node #0)' : 'PrefixNode #' + node.id}
+                        </text>
+
+                        ${isEnd ? `
+                            <!-- isEndNode Badge -->
+                            <circle cx="${x + coord.width - 16}" cy="${y + 18}" r="5" fill="#10b981" />
+                        ` : ''}
+
+                        <!-- Divider Line -->
+                        <line x1="${x}" y1="${y + cardHeaderHeight}" x2="${x + coord.width}" y2="${y + cardHeaderHeight}" stroke="#334155" stroke-width="1" />
+
+                        <!-- HashMap Key-Value Rows -->
+                        ${mapRowsSvg}
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+                    </marker>
+                </defs>
+                ${arrowsSvg}
+                ${nodesSvg}
+            `;
+        }
+
+        function loadDataset(words) {
+            resetTree();
+            words.forEach(w => insert(w));
+            renderSvgCanvas();
+        }
+
+        function initApp() {
+            document.getElementById('insertBtn').addEventListener('click', () => {
+                const input = document.getElementById('wordInput');
+                const val = input.value.trim();
+                if (val) {
+                    insert(val);
+                    input.value = '';
+                    renderSvgCanvas();
+                }
+            });
+
+            document.getElementById('wordInput').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('insertBtn').click();
+                }
+            });
+
+            document.getElementById('presetBtn1').addEventListener('click', () => {
+                loadDataset(["cat", "car", "do"]);
+            });
+
+            document.getElementById('presetBtn2').addEventListener('click', () => {
+                loadDataset(["app", "apple"]);
+            });
+
+            document.getElementById('presetBtn3').addEventListener('click', () => {
+                loadDataset(["tree", "trie"]);
+            });
+
+            document.getElementById('clearBtn').addEventListener('click', () => {
+                resetTree();
+                renderSvgCanvas();
+            });
+
+            // Initial load with simple example
+            loadDataset(["cat", "car", "do"]);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
