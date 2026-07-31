@@ -1,0 +1,798 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-950 text-slate-100">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Java Backtracking Visualizer - Subsets</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600;700&family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f6ff',
+                            400: '#60a5fa',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        },
+                        code: {
+                            bg: '#0d1117',
+                            border: '#30363d',
+                            line: '#161b22',
+                            active: '#1f293d',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+
+        .line-highlight {
+            background-color: rgba(59, 130, 246, 0.25) !important;
+            border-left: 4px solid #3b82f6 !important;
+        }
+
+        .node-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Pulse camera icon animation */
+        @keyframes snapshot-flash {
+            0% { transform: scale(1); opacity: 0; }
+            50% { transform: scale(1.4); opacity: 1; filter: drop-shadow(0 0 12px #38bdf8); }
+            100% { transform: scale(1); opacity: 0; }
+        }
+        .flash-active {
+            animation: snapshot-flash 0.8s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="h-full flex flex-col font-sans antialiased bg-slate-950 text-slate-200 overflow-x-hidden">
+
+    <!-- HEADER -->
+    <header class="bg-slate-900/90 border-b border-slate-800 px-6 py-3.5 flex flex-wrap items-center justify-between gap-4 sticky top-0 z-50 backdrop-blur">
+        <div class="flex items-center gap-3">
+            <div class="bg-gradient-to-tr from-blue-600 to-indigo-500 p-2.5 rounded-xl shadow-lg shadow-blue-500/20 text-white">
+                <i class="fa-solid fa-network-wired text-xl"></i>
+            </div>
+            <div>
+                <div class="flex items-center gap-2">
+                    <h1 class="font-bold text-lg text-white tracking-tight">Backtracking Visualizer</h1>
+                    <span class="px-2 py-0.5 text-xs font-mono bg-blue-950 text-blue-400 border border-blue-800/60 rounded-full font-medium">exercises.backtracking.Subsets</span>
+                </div>
+                <p class="text-xs text-slate-400">Master the "Choose &rarr; Recurse &rarr; Undo" framework interactively</p>
+            </div>
+        </div>
+
+        <!-- Controls Toolbar -->
+        <div class="flex items-center gap-3 bg-slate-950 p-1.5 rounded-xl border border-slate-800">
+            <button id="btn-reset" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg transition flex items-center gap-1.5" title="Reset Simulation">
+                <i class="fa-solid fa-rotate-left"></i> Reset
+            </button>
+            <div class="h-4 w-px bg-slate-800"></div>
+            <button id="btn-prev" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg transition flex items-center gap-1.5">
+                <i class="fa-solid fa-chevron-left"></i> Prev
+            </button>
+            <button id="btn-play" class="px-4 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition shadow-md shadow-blue-600/30 flex items-center gap-1.5">
+                <i class="fa-solid fa-play" id="play-icon"></i> <span id="play-text">Play</span>
+            </button>
+            <button id="btn-next" class="px-3 py-1.5 text-xs font-medium text-slate-300 hover:text-white bg-slate-800/60 hover:bg-slate-800 rounded-lg transition flex items-center gap-1.5">
+                Next <i class="fa-solid fa-chevron-right"></i>
+            </button>
+            <div class="h-4 w-px bg-slate-800"></div>
+            
+            <div class="flex items-center gap-2 px-2 text-xs text-slate-400">
+                <i class="fa-solid fa-gauge-high"></i>
+                <input type="range" id="speed-slider" min="200" max="1800" step="100" value="800" class="w-20 accent-blue-500 cursor-pointer">
+            </div>
+        </div>
+
+        <!-- Input Array Selector -->
+        <div class="flex items-center gap-2 bg-slate-900 border border-slate-800 px-3 py-1.5 rounded-xl">
+            <span class="text-xs font-mono text-slate-400">nums =</span>
+            <input type="text" id="input-array" value="1, 2, 3" class="w-24 bg-slate-950 border border-slate-700 text-xs font-mono text-blue-400 rounded px-2 py-1 focus:outline-none focus:border-blue-500 text-center font-bold">
+            <button id="btn-update-array" class="text-xs px-2 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded font-medium transition">
+                Apply
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN CONTENT GRID -->
+    <main class="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-4 p-4 min-h-0 overflow-y-auto">
+
+        <!-- LEFT/CENTER COLUMN: Visualization & Memory State (7 Cols) -->
+        <section class="lg:col-span-7 flex flex-col gap-4 min-h-[600px]">
+
+            <!-- TOP VISUAL PANEL: Decision Tree Graph -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col relative overflow-hidden shadow-xl flex-1">
+                <div class="flex items-center justify-between mb-2">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-sitemap text-blue-400 text-sm"></i>
+                        <h2 class="text-sm font-semibold text-slate-200">Backtracking Decision Tree</h2>
+                        <span class="text-[11px] text-slate-500 font-mono">(Nodes = current choices)</span>
+                    </div>
+                    <div class="flex items-center gap-3 text-xs">
+                        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span> Unvisited</span>
+                        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-blue-500 shadow-sm shadow-blue-500"></span> Active Path</span>
+                        <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-emerald-500"></span> Recorded</span>
+                    </div>
+                </div>
+
+                <!-- SVG Tree Canvas Container -->
+                <div id="tree-container" class="relative flex-1 w-full h-full min-h-[320px] bg-slate-950/60 rounded-xl border border-slate-800/80 overflow-auto flex items-center justify-center p-4">
+                    <svg id="tree-svg" class="w-full h-full min-w-[500px] min-h-[300px]">
+                        <!-- Dynamic SVG Tree Content Rendered via JS -->
+                    </svg>
+
+                    <!-- Snapshot Flash Overlay Effect -->
+                    <div id="snapshot-indicator" class="pointer-events-none absolute top-4 right-4 bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 px-3 py-1.5 rounded-lg text-xs font-mono font-medium flex items-center gap-2 opacity-0 transition-all duration-300">
+                        <i class="fa-solid fa-camera text-emerald-400 text-sm"></i>
+                        <span>Deep Copy Recorded to results!</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- BOTTOM STATE PANELS: Path, Results & Stack -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+                <!-- 1. currentPath Array -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-list-ol text-blue-400"></i> currentPath
+                            </span>
+                            <span class="text-[10px] font-mono bg-slate-800 text-slate-400 px-1.5 py-0.5 rounded">Mutated List</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-3">Live list modified by <code class="text-blue-300 font-mono">add()</code> and <code class="text-amber-300 font-mono">remove()</code></p>
+                    </div>
+
+                    <div id="path-container" class="min-h-[50px] bg-slate-950 rounded-xl p-2.5 border border-slate-800 flex items-center gap-2 overflow-x-auto">
+                        <span class="text-xs text-slate-600 font-mono italic">empty []</span>
+                    </div>
+                </div>
+
+                <!-- 2. results Array -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-box-archive text-emerald-400"></i> results
+                            </span>
+                            <span id="results-count" class="text-[10px] font-mono bg-emerald-950 text-emerald-400 border border-emerald-800/60 px-1.5 py-0.5 rounded font-bold">0 subsets</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-3">Collection of snapshot copies</p>
+                    </div>
+
+                    <div id="results-container" class="h-[80px] bg-slate-950 rounded-xl p-2 border border-slate-800 flex flex-wrap gap-1.5 overflow-y-auto content-start">
+                        <!-- Results items added here -->
+                    </div>
+                </div>
+
+                <!-- 3. Active Call Stack Frame -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 flex flex-col justify-between">
+                    <div>
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
+                                <i class="fa-solid fa-layer-group text-purple-400"></i> Call Stack
+                            </span>
+                            <span id="stack-depth" class="text-[10px] font-mono bg-purple-950 text-purple-300 border border-purple-800/60 px-1.5 py-0.5 rounded">Depth: 0</span>
+                        </div>
+                        <p class="text-[11px] text-slate-400 mb-3">Active recursive function calls</p>
+                    </div>
+
+                    <div id="stack-container" class="h-[80px] bg-slate-950 rounded-xl p-1.5 border border-slate-800 flex flex-col-reverse gap-1 overflow-y-auto">
+                        <!-- Stack frames -->
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- RIGHT COLUMN: Code View & Step Explanations (5 Cols) -->
+        <section class="lg:col-span-5 flex flex-col gap-4">
+
+            <!-- STEP ACTION & MENTAL MODEL EXPLANATION CARD -->
+            <div id="action-card" class="bg-gradient-to-br from-slate-900 to-slate-900/90 border border-blue-500/30 rounded-2xl p-4 shadow-lg relative overflow-hidden">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="step-badge" class="px-2.5 py-0.5 text-xs font-mono font-bold rounded-full bg-blue-500/20 text-blue-400 border border-blue-500/30 flex items-center gap-1">
+                        <i class="fa-solid fa-circle-play"></i> Step 0 / 0
+                    </span>
+                    <span id="action-type-pill" class="text-xs font-bold font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                        INITIALIZING
+                    </span>
+                </div>
+
+                <h3 id="action-title" class="text-base font-bold text-white mb-1">Welcome to Backtracking!</h3>
+                <p id="action-description" class="text-xs text-slate-300 leading-relaxed mb-3">
+                    Click <b>Next</b> or <b>Play</b> to walk line-by-line through your Java code execution.
+                </p>
+
+                <!-- Mental Model Tip Banner -->
+                <div id="action-tip" class="p-2.5 rounded-xl bg-blue-950/40 border border-blue-800/40 text-xs text-blue-200 flex items-start gap-2">
+                    <i class="fa-solid fa-lightbulb text-amber-400 text-sm shrink-0 mt-0.5"></i>
+                    <div id="action-tip-text">
+                        <b>Backtracking mental model:</b> Think of the call stack as traveling down a maze. You make a choice, recurse deeper, and when you hit a dead end or finish a branch, you <b>undo</b> that choice to backtrack and test the next path!
+                    </div>
+                </div>
+            </div>
+
+            <!-- JAVA CODE EDITOR VIEW -->
+            <div class="bg-code-bg border border-code-border rounded-2xl flex flex-col overflow-hidden shadow-2xl flex-1">
+                <!-- Editor Header -->
+                <div class="bg-slate-900 px-4 py-2.5 border-b border-code-border flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="flex gap-1.5">
+                            <span class="w-3 h-3 rounded-full bg-red-500/80 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-amber-500/80 inline-block"></span>
+                            <span class="w-3 h-3 rounded-full bg-emerald-500/80 inline-block"></span>
+                        </div>
+                        <span class="text-xs font-mono text-slate-400 ml-2 font-medium">Subsets.java</span>
+                    </div>
+                    <span class="text-[11px] font-mono text-slate-500">Java 17</span>
+                </div>
+
+                <!-- Code Container with Synchronized Line Highlighting -->
+                <div class="p-3 overflow-x-auto font-mono text-xs leading-6 select-none flex-1" id="code-container">
+                    <table class="w-full border-collapse">
+                        <tbody id="code-body">
+                            <!-- Code lines injected via JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- CHEAT SHEET: THE 3 CORE RULES -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 grid grid-cols-3 gap-2 text-center text-xs">
+                <div class="p-2 rounded-xl bg-blue-950/30 border border-blue-800/30">
+                    <div class="font-bold text-blue-400 mb-1">1. CHOOSE</div>
+                    <div class="text-[10px] text-slate-400 font-mono">currentPath.add(...)</div>
+                </div>
+                <div class="p-2 rounded-xl bg-purple-950/30 border border-purple-800/30">
+                    <div class="font-bold text-purple-400 mb-1">2. RECURSE</div>
+                    <div class="text-[10px] text-slate-400 font-mono">backtrack(..., i+1)</div>
+                </div>
+                <div class="p-2 rounded-xl bg-amber-950/30 border border-amber-800/30">
+                    <div class="font-bold text-amber-400 mb-1">3. UNDO</div>
+                    <div class="text-[10px] text-slate-400 font-mono">currentPath.remove(...)</div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- JAVASCRIPT SIMULATION LOGIC -->
+    <script>
+        // Exact Java code string lines for display
+        const JAVA_CODE = [
+            { num: 1, code: "package exercises.backtracking;" },
+            { num: 2, code: "" },
+            { num: 3, code: "import java.util.ArrayList;" },
+            { num: 4, code: "import java.util.List;" },
+            { num: 5, code: "" },
+            { num: 6, code: "public class Subsets {" },
+            { num: 7, code: "    public List<List<Integer>> subsets(int[] nums) {" },
+            { num: 8, code: "        List<List<Integer>> results = new ArrayList<>();" },
+            { num: 9, code: "        backtrack(results, new ArrayList<>(), 0, nums);" },
+            { num: 10, code: "        return results;" },
+            { num: 11, code: "    }" },
+            { num: 12, code: "" },
+            { num: 13, code: "    private void backtrack(List<List<Integer>> results, List<Integer> currentPath, int startIndex, int[] nums) {" },
+            { num: 14, code: "        // 1. RECORD/BASE CASE: Save current solution state" },
+            { num: 15, code: "        results.add(new ArrayList<>(currentPath));" },
+            { num: 16, code: "" },
+            { num: 17, code: "        // 2. EXPLORE CHOICES: Loop from startIndex onwards" },
+            { num: 18, code: "        for (int i = startIndex; i < nums.length; i++) {" },
+            { num: 19, code: "" },
+            { num: 20, code: "            // --- CHOICE ---" },
+            { num: 21, code: "            currentPath.add(nums[i]);" },
+            { num: 22, code: "" },
+            { num: 23, code: "            // --- RECURSE ---" },
+            { num: 24, code: "            backtrack(results, currentPath, i + 1, nums);" },
+            { num: 25, code: "" },
+            { num: 26, code: "            // --- UNDO (BACKTRACK) ---" },
+            { num: 27, code: "            currentPath.remove(currentPath.size() - 1);" },
+            { num: 28, code: "        }" },
+            { num: 29, code: "    }" },
+            { num: 30, code: "}" }
+        ];
+
+        // Global State Variables
+        let nums = [1, 2, 3];
+        let steps = [];
+        let currentStepIdx = 0;
+        let playInterval = null;
+        let treeNodesMap = new Map();
+
+        // DOM Element References
+        const codeBody = document.getElementById('code-body');
+        const btnPlay = document.getElementById('btn-play');
+        const playIcon = document.getElementById('play-icon');
+        const playText = document.getElementById('play-text');
+        const btnPrev = document.getElementById('btn-prev');
+        const btnNext = document.getElementById('btn-next');
+        const btnReset = document.getElementById('btn-reset');
+        const speedSlider = document.getElementById('speed-slider');
+        const inputArray = document.getElementById('input-array');
+        const btnUpdateArray = document.getElementById('btn-update-array');
+
+        const pathContainer = document.getElementById('path-container');
+        const resultsContainer = document.getElementById('results-container');
+        const resultsCount = document.getElementById('results-count');
+        const stackContainer = document.getElementById('stack-container');
+        const stackDepth = document.getElementById('stack-depth');
+
+        const stepBadge = document.getElementById('step-badge');
+        const actionTypePill = document.getElementById('action-type-pill');
+        const actionTitle = document.getElementById('action-title');
+        const actionDescription = document.getElementById('action-description');
+        const actionTipText = document.getElementById('action-tip-text');
+        const snapshotIndicator = document.getElementById('snapshot-indicator');
+        const treeSvg = document.getElementById('tree-svg');
+
+        // Render Code Table Lines
+        function renderCodeTable() {
+            codeBody.innerHTML = JAVA_CODE.map(line => `
+                <tr id="line-${line.num}" class="transition-colors duration-150">
+                    <td class="w-8 select-none text-right pr-3 text-slate-600 font-mono text-[11px]">${line.num}</td>
+                    <td class="pl-2 whitespace-pre text-slate-300 font-mono">${escapeHtml(line.code)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+
+        // --- STREAMING_CHUNK:Generating backtracking trace steps... ---
+        // Backtracking Execution Trace Generator
+        function generateBacktrackTrace(inputNums) {
+            const traceSteps = [];
+            const results = [];
+            const currentPath = [];
+            const callStack = [];
+            
+            // Helper to record a snapshot step
+            function recordStep(line, actionType, title, desc, tip, extraProps = {}) {
+                traceSteps.push({
+                    stepIndex: traceSteps.length + 1,
+                    line,
+                    actionType, // 'INIT', 'RECORD', 'LOOP_CHECK', 'CHOOSE', 'RECURSE', 'UNDO', 'RETURN'
+                    title,
+                    desc,
+                    tip,
+                    currentPath: [...currentPath],
+                    results: results.map(r => [...r]),
+                    callStack: JSON.parse(JSON.stringify(callStack)),
+                    activeNodeId: extraProps.nodeId || (currentPath.join('-') || 'root'),
+                    loopVarI: extraProps.loopVarI,
+                    startIndex: extraProps.startIndex
+                });
+            }
+
+            // Step 1: Entry into subsets method
+            callStack.push({ name: "subsets", startIndex: null, i: null });
+            recordStep(8, "INIT", "Method subsets(nums) Called", 
+                `Initializing empty results list. input array = [${inputNums.join(', ')}].`,
+                "The subsets method acts as the entry point, creating the results container before delegating to the recursive backtrack helper."
+            );
+
+            // Step 2: Calling backtrack
+            recordStep(9, "RECURSE", "Calling backtrack Helper", 
+                `Invoking backtrack(results, [], startIndex = 0, nums).`,
+                "startIndex = 0 tells recursion to start considering choices from index 0."
+            );
+
+            // Recursive backtrack function matching Java logic
+            function backtrack(startIndex) {
+                const nodeId = currentPath.join('-') || 'root';
+                callStack.push({ name: "backtrack", startIndex, i: null });
+
+                recordStep(13, "ENTER", `Entered backtrack(startIndex = ${startIndex})`, 
+                    `New frame pushed on stack. Current path state: [${currentPath.join(', ')}].`,
+                    `At depth ${callStack.length - 1}, we are ready to process node [${currentPath.join(', ')}].`,
+                    { nodeId, startIndex }
+                );
+
+                // Line 15: RECORD snapshot
+                results.push([...currentPath]);
+                recordStep(15, "RECORD", "1. RECORD STATE (Snapshot)", 
+                    `Executing: results.add(new ArrayList<>(currentPath)). Added subset [${currentPath.join(', ')}] to results.`,
+                    "CRITICAL: We MUST create a new ArrayList copy! Otherwise, since currentPath is mutated, results would just hold references to an empty list at the end.",
+                    { nodeId, startIndex }
+                );
+
+                // Line 18: Loop choices
+                for (let i = startIndex; i < inputNums.length; i++) {
+                    // Update stack frame loop counter
+                    callStack[callStack.length - 1].i = i;
+
+                    recordStep(18, "LOOP_CHECK", `Checking Loop Choice (i = ${i})`, 
+                        `Loop index i = ${i} (< nums.length=${inputNums.length}). Choosing element nums[${i}] = ${inputNums[i]}.`,
+                        `The loop explores all available choices starting from startIndex (${startIndex}). Here, i = ${i}.`,
+                        { nodeId, startIndex, loopVarI: i }
+                    );
+
+                    // Line 21: CHOICE
+                    currentPath.push(inputNums[i]);
+                    const childNodeId = currentPath.join('-');
+                    recordStep(21, "CHOOSE", `2. CHOOSE: add ${inputNums[i]} to path`, 
+                        `Executing: currentPath.add(nums[${i}]). Path is now [${currentPath.join(', ')}].`,
+                        `We commit to picking ${inputNums[i]} and will explore all subsets that contain this prefix.`,
+                        { nodeId: childNodeId, startIndex, loopVarI: i }
+                    );
+
+                    // Line 24: RECURSE
+                    recordStep(24, "RECURSE", `3. RECURSE: backtrack(i + 1 = ${i + 1})`, 
+                        `Calling backtrack(..., startIndex = ${i + 1}). Moving to next depth level!`,
+                        `By passing i + 1, we ensure future choices only pick elements to the right, avoiding duplicate subsets.`,
+                        { nodeId: childNodeId, startIndex, loopVarI: i }
+                    );
+
+                    // Recurse call
+                    backtrack(i + 1);
+
+                    // Restore stack frame i
+                    callStack[callStack.length - 1].i = i;
+
+                    // Line 27: UNDO
+                    const removedVal = currentPath.pop();
+                    recordStep(27, "UNDO", `4. UNDO (BACKTRACK): remove last element (${removedVal})`, 
+                        `Executing: currentPath.remove(size - 1). Removed ${removedVal}. Path restored to [${currentPath.join(', ')}].`,
+                        `This is the BACKTRACK step! By cleaning up currentPath, we restore state so the next loop iteration (i + 1) can try a different choice.`,
+                        { nodeId, startIndex, loopVarI: i }
+                    );
+                }
+
+                // Loop completed / Return
+                recordStep(28, "RETURN", `Finished Choices for startIndex = ${startIndex}`, 
+                    `Loop ended for startIndex = ${startIndex}. Returning up to parent caller.`,
+                    `Popping current stack frame. The search space for this branch has been fully explored.`,
+                    { nodeId, startIndex }
+                );
+
+                callStack.pop();
+            }
+
+            // Run recursive trace
+            backtrack(0);
+
+            // Pop main method
+            recordStep(10, "FINISH", "Algorithm Execution Completed!", 
+                `backtrack finished! Returning final results containing ${results.length} subsets.`,
+                "Success! Every single subset combination in the decision tree has been visited and recorded.",
+                { nodeId: 'root' }
+            );
+
+            return traceSteps;
+        }
+
+        // Build Decision Tree Structure for SVG Rendering
+        function buildTreeData(inputNums) {
+            const root = { id: 'root', label: '[]', path: [], children: [], x: 0, y: 0 };
+            
+            function addChildren(parentNode, startIndex) {
+                for (let i = startIndex; i < inputNums.length; i++) {
+                    const childPath = [...parentNode.path, inputNums[i]];
+                    const childNode = {
+                        id: childPath.join('-'),
+                        label: `[${childPath.join(',')}]`,
+                        path: childPath,
+                        valChosen: inputNums[i],
+                        children: [],
+                        x: 0,
+                        y: 0
+                    };
+                    parentNode.children.push(childNode);
+                    addChildren(childNode, i + 1);
+                }
+            }
+
+            addChildren(root, 0);
+            return root;
+        }
+
+        // Simple Tree Layout positioning algorithm
+        function calculateTreeLayout(root) {
+            let leafCount = 0;
+
+            function positionNodes(node, depth = 0) {
+                node.y = depth * 65 + 35; // Vertical spacing
+
+                if (node.children.length === 0) {
+                    node.x = leafCount * 70 + 45; // Horizontal leaf spacing
+                    leafCount++;
+                } else {
+                    node.children.forEach(child => positionNodes(child, depth + 1));
+                    // Parent x is average of children
+                    const firstX = node.children[0].x;
+                    const lastX = node.children[node.children.length - 1].x;
+                    node.x = (firstX + lastX) / 2;
+                }
+            }
+
+            positionNodes(root, 0);
+            return { root, totalWidth: Math.max(leafCount * 70 + 60, 480) };
+        }
+
+        // Render Tree into SVG
+        function renderTreeSvg(treeData, totalWidth) {
+            treeSvg.setAttribute('viewBox', `0 0 ${totalWidth} 280`);
+            treeNodesMap.clear();
+
+            let svgContent = '';
+
+            // 1. Render Edges
+            function renderEdges(node) {
+                node.children.forEach(child => {
+                    const edgeId = `edge-${node.id}-to-${child.id}`;
+                    svgContent += `
+                        <g id="${edgeId}" class="edge-group opacity-40 transition-all duration-300">
+                            <line x1="${node.x}" y1="${node.y}" x2="${child.x}" y2="${child.y}" 
+                                  stroke="#475569" stroke-width="2" stroke-dasharray="4 2"/>
+                            <text x="${(node.x + child.x) / 2 - 8}" y="${(node.y + child.y) / 2}" 
+                                  fill="#94a3b8" font-size="10" font-family="monospace" font-weight="bold">+${child.valChosen}</text>
+                        </g>
+                    `;
+                    renderEdges(child);
+                });
+            }
+
+            // 2. Render Nodes
+            function renderNodes(node) {
+                treeNodesMap.set(node.id, node);
+                svgContent += `
+                    <g id="node-${node.id}" class="node-group cursor-pointer node-transition" transform="translate(${node.x}, ${node.y})">
+                        <circle r="18" fill="#0f172a" stroke="#334155" stroke-width="2" class="node-circle transition-all duration-300"/>
+                        <text text-anchor="middle" dy="4" fill="#cbd5e1" font-size="10" font-family="monospace" font-weight="bold" class="node-text pointer-events-none">
+                            ${node.label}
+                        </text>
+                    </g>
+                `;
+                node.children.forEach(renderNodes);
+            }
+
+            renderEdges(treeData);
+            renderNodes(treeData);
+
+            treeSvg.innerHTML = svgContent;
+        }
+
+        // Update Visualizer State according to currentStepIdx
+        function updateStepUI() {
+            if (steps.length === 0) return;
+
+            const step = steps[currentStepIdx];
+
+            // 1. Update Step Counter & Badge
+            stepBadge.innerHTML = `<i class="fa-solid fa-code-commit"></i> Step ${step.stepIndex} / ${steps.length}`;
+            
+            // Action Type Styling
+            const typeStyles = {
+                INIT: 'bg-slate-800 text-slate-300 border-slate-700',
+                ENTER: 'bg-indigo-950 text-indigo-300 border-indigo-800',
+                RECORD: 'bg-emerald-950 text-emerald-300 border-emerald-800',
+                LOOP_CHECK: 'bg-slate-800 text-blue-300 border-blue-800',
+                CHOOSE: 'bg-blue-950 text-blue-300 border-blue-800',
+                RECURSE: 'bg-purple-950 text-purple-300 border-purple-800',
+                UNDO: 'bg-amber-950 text-amber-300 border-amber-800',
+                RETURN: 'bg-slate-900 text-slate-400 border-slate-800',
+                FINISH: 'bg-emerald-900 text-emerald-200 border-emerald-700'
+            };
+            actionTypePill.className = `text-xs font-bold font-mono px-2.5 py-0.5 rounded border ${typeStyles[step.actionType] || typeStyles.INIT}`;
+            actionTypePill.textContent = step.actionType;
+
+            actionTitle.textContent = step.title;
+            actionDescription.textContent = step.desc;
+            actionTipText.innerHTML = `<b>Mental Model:</b> ${step.tip}`;
+
+            // 2. Line Highlighting in Code
+            document.querySelectorAll('#code-body tr').forEach(row => row.classList.remove('line-highlight'));
+            const activeRow = document.getElementById(`line-${step.line}`);
+            if (activeRow) {
+                activeRow.classList.add('line-highlight');
+                activeRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            }
+
+            // 3. Update currentPath visual elements
+            if (step.currentPath.length === 0) {
+                pathContainer.innerHTML = `<span class="text-xs text-slate-600 font-mono italic">empty []</span>`;
+            } else {
+                pathContainer.innerHTML = step.currentPath.map((val, idx) => `
+                    <span class="px-2.5 py-1 bg-blue-600/30 border border-blue-500/50 text-blue-300 font-mono font-bold text-xs rounded-lg shadow-sm animate-pulse">
+                        ${val}
+                    </span>
+                `).join('<span class="text-slate-600 text-xs font-mono">&rarr;</span>');
+            }
+
+            // 4. Update results visual collection
+            resultsCount.textContent = `${step.results.length} subsets`;
+            resultsContainer.innerHTML = step.results.map((sub, idx) => `
+                <div class="px-2 py-1 bg-emerald-950/60 border border-emerald-800/60 text-emerald-300 font-mono text-[11px] rounded-md flex items-center gap-1 shadow-sm">
+                    <span class="text-slate-500 text-[9px]">#${idx+1}</span>
+                    <span>[${sub.join(',')}]</span>
+                </div>
+            `).join('');
+
+            // Trigger snapshot flash if action is RECORD
+            if (step.actionType === 'RECORD') {
+                snapshotIndicator.classList.remove('opacity-0');
+                snapshotIndicator.classList.add('flash-active');
+                setTimeout(() => snapshotIndicator.classList.remove('flash-active'), 800);
+            } else {
+                snapshotIndicator.classList.add('opacity-0');
+            }
+
+            // 5. Update Call Stack View
+            stackDepth.textContent = `Depth: ${step.callStack.length}`;
+            stackContainer.innerHTML = step.callStack.map((frame, idx) => `
+                <div class="px-2 py-1 rounded bg-slate-900 border ${idx === step.callStack.length - 1 ? 'border-purple-500/80 text-purple-300 bg-purple-950/30' : 'border-slate-800 text-slate-400'} text-[11px] font-mono flex items-center justify-between">
+                    <span class="font-semibold">${frame.name}(...)</span>
+                    <span class="text-[10px] opacity-75">
+                        ${frame.startIndex !== null ? `start:${frame.startIndex}` : ''}
+                        ${frame.i !== null ? ` | i:${frame.i}` : ''}
+                    </span>
+                </div>
+            `).join('');
+
+            // 6. Update SVG Decision Tree highlights
+            treeNodesMap.forEach((node, id) => {
+                const nodeGroup = document.getElementById(`node-${id}`);
+                if (!nodeGroup) return;
+
+                const circle = nodeGroup.querySelector('.node-circle');
+                const text = nodeGroup.querySelector('.node-text');
+
+                // Reset styling
+                circle.setAttribute('fill', '#0f172a');
+                circle.setAttribute('stroke', '#334155');
+                circle.setAttribute('stroke-width', '2');
+                circle.setAttribute('r', '18');
+                text.setAttribute('fill', '#cbd5e1');
+
+                // Check if recorded subset exists for node
+                const nodePathStr = node.path.join(',');
+                const isRecorded = step.results.some(r => r.join(',') === nodePathStr);
+
+                if (isRecorded) {
+                    circle.setAttribute('stroke', '#10b981'); // Emerald
+                    circle.setAttribute('fill', '#064e3b');
+                }
+
+                // Is active node
+                if (id === step.activeNodeId) {
+                    circle.setAttribute('fill', '#2563eb'); // Blue active
+                    circle.setAttribute('stroke', '#60a5fa');
+                    circle.setAttribute('stroke-width', '3.5');
+                    circle.setAttribute('r', '22');
+                    text.setAttribute('fill', '#ffffff');
+                }
+            });
+
+            // Update button states
+            btnPrev.disabled = currentStepIdx === 0;
+            btnNext.disabled = currentStepIdx === steps.length - 1;
+            btnPrev.classList.toggle('opacity-50', currentStepIdx === 0);
+            btnNext.classList.toggle('opacity-50', currentStepIdx === steps.length - 1);
+        }
+
+        // Simulation Controls
+        function play() {
+            if (currentStepIdx >= steps.length - 1) {
+                currentStepIdx = 0;
+            }
+            playIcon.className = "fa-solid fa-pause";
+            playText.textContent = "Pause";
+            btnPlay.classList.replace('bg-blue-600', 'bg-amber-600');
+            btnPlay.classList.replace('hover:bg-blue-500', 'hover:bg-amber-500');
+
+            const speed = 2000 - parseInt(speedSlider.value, 10);
+            playInterval = setInterval(() => {
+                if (currentStepIdx < steps.length - 1) {
+                    currentStepIdx++;
+                    updateStepUI();
+                } else {
+                    pause();
+                }
+            }, speed);
+        }
+
+        function pause() {
+            clearInterval(playInterval);
+            playInterval = null;
+            playIcon.className = "fa-solid fa-play";
+            playText.textContent = "Play";
+            btnPlay.classList.replace('bg-amber-600', 'bg-blue-600');
+            btnPlay.classList.replace('hover:bg-amber-500', 'hover:bg-blue-500');
+        }
+
+        function initSimulation(newNums) {
+            pause();
+            nums = newNums;
+            steps = generateBacktrackTrace(nums);
+            currentStepIdx = 0;
+
+            const treeData = buildTreeData(nums);
+            const { root, totalWidth } = calculateTreeLayout(treeData);
+            renderTreeSvg(root, totalWidth);
+
+            updateStepUI();
+        }
+
+        // Event Listeners
+        btnPlay.addEventListener('click', () => {
+            if (playInterval) pause();
+            else play();
+        });
+
+        btnNext.addEventListener('click', () => {
+            pause();
+            if (currentStepIdx < steps.length - 1) {
+                currentStepIdx++;
+                updateStepUI();
+            }
+        });
+
+        btnPrev.addEventListener('click', () => {
+            pause();
+            if (currentStepIdx > 0) {
+                currentStepIdx--;
+                updateStepUI();
+            }
+        });
+
+        btnReset.addEventListener('click', () => {
+            pause();
+            currentStepIdx = 0;
+            updateStepUI();
+        });
+
+        btnUpdateArray.addEventListener('click', () => {
+            const raw = inputArray.value;
+            const parsed = raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n));
+            if (parsed.length > 0 && parsed.length <= 4) {
+                initSimulation(parsed);
+            } else {
+                alert("Please enter 1 to 4 integers (e.g. 1, 2, 3) to keep the decision tree visualization clean.");
+            }
+        });
+
+        // Initialize on load
+        window.addEventListener('DOMContentLoaded', () => {
+            renderCodeTable();
+            initSimulation([1, 2, 3]);
+        });
+    </script>
+</body>
+</html>
