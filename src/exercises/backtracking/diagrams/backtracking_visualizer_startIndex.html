@@ -1,0 +1,528 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Backtracking Visualizer: i > startIndex vs i > 0</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+        .glass-panel {
+            background: rgba(30, 41, 59, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .node-card {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .node-card:hover {
+            transform: translateY(-2px) scale(1.02);
+        }
+        .connection-line {
+            stroke-dasharray: 6;
+            animation: dash 30s linear infinite;
+        }
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -1000;
+            }
+        }
+        .glow-red {
+            box-shadow: 0 0 15px rgba(239, 68, 68, 0.35);
+        }
+        .glow-green {
+            box-shadow: 0 0 15px rgba(34, 197, 94, 0.35);
+        }
+        .glow-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.35);
+        }
+        /* Custom scrollbars */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0f172a;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #334155;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #475569;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col font-sans antialiased pb-12">
+
+    <header class="border-b border-slate-800 glass-panel sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 py-4 sm:px-6 lg:px-8 flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-indigo-600/20 text-indigo-400 rounded-xl border border-indigo-500/30">
+                    <i class="fa-solid me-0 fa-sitemap text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-white tracking-tight flex items-center gap-2">
+                        Backtracking Duplicate Skip Visualizer
+                    </h1>
+                    <p class="text-xs text-slate-400">Visually exploring <code class="text-amber-400 font-mono">i > startIndex</code> vs <code class="text-rose-400 font-mono">i > 0</code> in Subsets II</p>
+                </div>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Presets:</span>
+                <button onclick="setPreset([1, 2, 2])" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-medium border border-slate-700 transition">
+                    [1, 2, 2]
+                </button>
+                <button onclick="setPreset([2, 2, 2])" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-medium border border-slate-700 transition">
+                    [2, 2, 2]
+                </button>
+                <button onclick="setPreset([1, 1, 2])" class="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-xs font-mono font-medium border border-slate-700 transition">
+                    [1, 1, 2]
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-1 flex flex-col gap-6">
+
+        <section class="glass-panel rounded-2xl p-6 border border-slate-800">
+            <h2 class="text-base font-semibold text-white mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-lightbulb text-amber-400"></i>
+                The Core Intuition: Vertical Depth vs. Horizontal Siblings
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+                <div class="bg-slate-900/60 rounded-xl p-4 border border-emerald-500/20">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-emerald-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-down-long"></i> Vertical Step (Going Deeper)
+                        </span>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-emerald-500/10 text-emerald-300 border border-emerald-500/20">
+                            i == startIndex
+                        </span>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        This is the <strong>first iteration</strong> of the <code class="font-mono text-emerald-300">for</code> loop at a new recursion level. 
+                        It moves down to build longer subsets like <code class="font-mono text-emerald-300">[2, 2]</code>. Here, <code class="font-mono">i &gt; startIndex</code> is <strong>FALSE</strong>, so duplicate values are <strong>ALLOWED</strong>.
+                    </p>
+                </div>
+
+                <div class="bg-slate-900/60 rounded-xl p-4 border border-rose-500/20">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-rose-400 flex items-center gap-1.5">
+                            <i class="fa-solid fa-arrow-right-long"></i> Horizontal Step (Same Level Siblings)
+                        </span>
+                        <span class="px-2 py-0.5 rounded text-[11px] font-mono bg-rose-500/10 text-rose-300 border border-rose-500/20">
+                            i &gt; startIndex
+                        </span>
+                    </div>
+                    <p class="text-slate-300 text-xs leading-relaxed">
+                        This is a <strong>subsequent iteration</strong> in the same loop. It tries alternative branch choices at the same depth. 
+                        Here, <code class="font-mono">i &gt; startIndex</code> is <strong>TRUE</strong>. If <code class="font-mono">nums[i] == nums[i-1]</code>, it is a duplicate sibling and must be <strong>SKIPPED</strong>.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+
+            <!-- LEFT SIDE: BUGGY APPROACH (i > 0) -->
+            <section class="glass-panel rounded-2xl p-5 border border-rose-900/40 flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-rose-500/20 text-rose-400">
+                                <i class="fa-solid fa-xmark"></i>
+                            </span>
+                            <h3 class="font-bold text-white text-sm">Flawed Condition: <code class="text-rose-400 font-mono">i > 0</code></h3>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Condition: <code class="font-mono text-rose-300">if (i &gt; 0 &amp;&amp; nums[i] == nums[i-1]) continue;</code>
+                        </p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                        BROKEN / MISSING SUBSETS
+                    </span>
+                </div>
+
+                <!-- Tree View Container -->
+                <div class="relative min-h-[380px] my-4 overflow-x-auto bg-slate-950/50 rounded-xl border border-slate-800/80 p-4" id="tree-container-buggy">
+                    <!-- Tree rendered dynamically via JS -->
+                </div>
+
+                <!-- Resulting Subsets Output -->
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 mt-auto">
+                    <span class="text-xs font-medium text-slate-400 block mb-1">Generated Subsets:</span>
+                    <div id="subsets-buggy" class="flex flex-wrap gap-1.5 font-mono text-xs">
+                        <!-- JS inserted badges -->
+                    </div>
+                    <div id="missing-warning-buggy" class="mt-2 text-xs text-rose-400 flex items-center gap-1.5 hidden">
+                        <i class="fa-solid fa-triangle-exclamation"></i>
+                        <span>Notice: Missing valid duplicate paths because <code class="font-mono">i &gt; 0</code> blocked vertical exploration!</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT SIDE: CORRECT APPROACH (i > startIndex) -->
+            <section class="glass-panel rounded-2xl p-5 border border-emerald-900/40 flex flex-col">
+                <div class="flex items-center justify-between pb-3 border-b border-slate-800">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-emerald-500/20 text-emerald-400">
+                                <i class="fa-solid fa-check"></i>
+                            </span>
+                            <h3 class="font-bold text-white text-sm">Correct Condition: <code class="text-emerald-400 font-mono">i > startIndex</code></h3>
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">
+                            Condition: <code class="font-mono text-emerald-300">if (i &gt; startIndex &amp;&amp; nums[i] == nums[i-1]) continue;</code>
+                        </p>
+                    </div>
+                    <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                        COMPLETE & CORRECT
+                    </span>
+                </div>
+
+                <!-- Tree View Container -->
+                <div class="relative min-h-[380px] my-4 overflow-x-auto bg-slate-950/50 rounded-xl border border-slate-800/80 p-4" id="tree-container-correct">
+                    <!-- Tree rendered dynamically via JS -->
+                </div>
+
+                <!-- Resulting Subsets Output -->
+                <div class="bg-slate-900/80 rounded-xl p-3 border border-slate-800 mt-auto">
+                    <span class="text-xs font-medium text-slate-400 block mb-1">Generated Subsets:</span>
+                    <div id="subsets-correct" class="flex flex-wrap gap-1.5 font-mono text-xs">
+                        <!-- JS inserted badges -->
+                    </div>
+                    <div class="mt-2 text-xs text-emerald-400 flex items-center gap-1.5">
+                        <i class="fa-solid fa-circle-check"></i>
+                        <span>All valid subsets included without duplicates!</span>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+
+        <section class="glass-panel rounded-2xl p-6 border border-slate-800">
+            <h3 class="text-sm font-semibold text-white mb-3 flex items-center gap-2">
+                <i class="fa-solid fa-magnifying-glass-chart text-indigo-400"></i>
+                Node Call Inspector
+            </h3>
+            <div id="inspector-content" class="bg-slate-900/80 rounded-xl p-4 border border-slate-800 text-xs font-mono text-slate-300">
+                <p class="text-slate-400 italic">Click on any node in either tree above to inspect its exact variables, loop state, and why it was included or skipped.</p>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        let currentNums = [1, 2, 2];
+
+        // Backtracking class to construct recursive trace trees
+        class TreeBuilder {
+            constructor(nums, isCorrectAlgorithm) {
+                this.nums = nums;
+                this.isCorrectAlgorithm = isCorrectAlgorithm;
+                this.nodeIdCounter = 0;
+            }
+
+            build() {
+                const root = {
+                    id: this.nodeIdCounter++,
+                    path: [],
+                    startIndex: 0,
+                    i: null,
+                    numPicked: null,
+                    status: 'accepted', // 'accepted' | 'skipped'
+                    skipReason: null,
+                    children: [],
+                    depth: 0,
+                    isVertical: true
+                };
+
+                this.backtrack(root, 0, []);
+                return root;
+            }
+
+            backtrack(parentNode, startIndex, currentPath) {
+                for (let i = startIndex; i < this.nums.length; i++) {
+                    const num = this.nums[i];
+                    const isDuplicateValue = (i > 0 && this.nums[i] === this.nums[i - 1]);
+                    
+                    let shouldSkip = false;
+                    let skipReason = "";
+                    let isVertical = (i === startIndex);
+
+                    if (this.isCorrectAlgorithm) {
+                        // Correct: i > startIndex
+                        if (i > startIndex && isDuplicateValue) {
+                            shouldSkip = true;
+                            skipReason = `Skipped Horizontal Duplicate: i (${i}) > startIndex (${startIndex}) AND nums[${i}] == nums[${i-1}] (${num} == ${this.nums[i-1]})`;
+                        }
+                    } else {
+                        // Buggy: i > 0
+                        if (i > 0 && isDuplicateValue) {
+                            shouldSkip = true;
+                            if (isVertical) {
+                                skipReason = `BUG! Skipped Vertical Step: i (${i}) > 0 IS TRUE even though i == startIndex (${startIndex})! Lost duplicate depth.`;
+                            } else {
+                                skipReason = `Skipped Horizontal Duplicate: i (${i}) > 0 AND nums[${i}] == nums[${i-1}]`;
+                            }
+                        }
+                    }
+
+                    const childPath = [...currentPath, num];
+                    const childNode = {
+                        id: this.nodeIdCounter++,
+                        path: childPath,
+                        startIndex: startIndex,
+                        nextStartIndex: i + 1,
+                        i: i,
+                        numPicked: num,
+                        status: shouldSkip ? 'skipped' : 'accepted',
+                        skipReason: skipReason,
+                        children: [],
+                        depth: parentNode.depth + 1,
+                        isVertical: isVertical
+                    };
+
+                    parentNode.children.push(childNode);
+
+                    // If not skipped, recurse deeper
+                    if (!shouldSkip) {
+                        this.backtrack(childNode, i + 1, childPath);
+                    }
+                }
+            }
+        }
+
+        function renderTreeHTML(node, isCorrect) {
+            if (!node) return '';
+
+            const isRoot = node.i === null;
+            let statusClasses = '';
+            let borderGlow = '';
+
+            if (isRoot) {
+                statusClasses = 'bg-indigo-950/80 text-indigo-200 border-indigo-500/50';
+                borderGlow = 'glow-blue';
+            } else if (node.status === 'skipped') {
+                statusClasses = 'bg-rose-950/80 text-rose-300 border-rose-500/60 opacity-80';
+                borderGlow = 'glow-red';
+            } else {
+                statusClasses = 'bg-emerald-950/80 text-emerald-200 border-emerald-500/50';
+                borderGlow = 'glow-green';
+            }
+
+            const pathText = node.path.length === 0 ? '[]' : `[${node.path.join(', ')}]`;
+
+            let stepBadge = '';
+            if (!isRoot) {
+                if (node.isVertical) {
+                    stepBadge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-semibold">Vertical (i==start)</span>`;
+                } else {
+                    stepBadge = `<span class="text-[9px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-semibold">Horizontal (i>start)</span>`;
+                }
+            }
+
+            const nodeDataJSON = JSON.stringify({
+                path: pathText,
+                startIndex: node.startIndex,
+                i: node.i,
+                numPicked: node.numPicked,
+                status: node.status,
+                skipReason: node.skipReason,
+                isVertical: node.isVertical,
+                isCorrect: isCorrect,
+                nums: currentNums
+            }).replace(/"/g, '&quot;');
+
+            let childrenHTML = '';
+            if (node.children && node.children.length > 0) {
+                childrenHTML = `
+                    <div class="flex items-start justify-center gap-4 mt-6 relative">
+                        ${node.children.map(child => renderTreeHTML(child, isCorrect)).join('')}
+                    </div>
+                `;
+            }
+
+            return `
+                <div class="flex flex-col items-center relative">
+                    <!-- Node Box -->
+                    <div onclick="inspectNode(${nodeDataJSON})" 
+                         class="node-card cursor-pointer p-2.5 rounded-xl border ${statusClasses} ${borderGlow} flex flex-col items-center gap-1 z-10 min-w-[110px] text-center shadow-lg">
+                        <span class="font-mono text-xs font-bold">${pathText}</span>
+                        ${!isRoot ? `
+                            <div class="text-[10px] font-mono text-slate-300 flex flex-col items-center gap-0.5">
+                                <span>i=${node.i} | start=${node.startIndex}</span>
+                                <span>pick: ${node.numPicked}</span>
+                            </div>
+                            ${stepBadge}
+                        ` : '<span class="text-[10px] text-indigo-300">Root Call</span>'}
+
+                        ${node.status === 'skipped' ? `
+                            <span class="mt-1 px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 text-[9px] font-bold">
+                                <i class="fa-solid fa-ban"></i> SKIPPED
+                            </span>
+                        ` : ''}
+                    </div>
+
+                    ${childrenHTML}
+                </div>
+            `;
+        }
+
+        function collectSubsets(node, subsetsList = []) {
+            if (node.status === 'accepted') {
+                subsetsList.push(`[${node.path.join(', ')}]`);
+                for (const child of node.children) {
+                    collectSubsets(child, subsetsList);
+                }
+            }
+            return subsetsList;
+        }
+
+        function inspectNode(data) {
+            const inspector = document.getElementById('inspector-content');
+            
+            const conditionTitle = data.isCorrect ? 'i > startIndex (CORRECT)' : 'i > 0 (FLAWED)';
+            const condColor = data.isCorrect ? 'text-emerald-400' : 'text-rose-400';
+
+            if (data.i === null) {
+                inspector.innerHTML = `
+                    <div class="space-y-1">
+                        <p class="font-bold text-white text-sm">Root Node Inspection (${conditionTitle})</p>
+                        <p>Initial state: Path = <code class="text-indigo-300">[]</code>, startIndex = <code class="text-indigo-300">0</code>.</p>
+                        <p class="text-slate-400">Begins looping through nums = [${data.nums.join(', ')}].</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const stepType = data.isVertical 
+                ? '<span class="text-emerald-400 font-bold">Vertical Expansion (Going Deeper)</span>'
+                : '<span class="text-amber-400 font-bold">Horizontal Sibling Choice (Same Depth)</span>';
+
+            const iVal = data.i;
+            const startVal = data.startIndex;
+            const prevNum = iVal > 0 ? data.nums[iVal - 1] : 'N/A';
+            const currNum = data.nums[iVal];
+            const isDup = iVal > 0 && currNum === prevNum;
+
+            let conditionEvaluationHTML = '';
+
+            if (data.isCorrect) {
+                // i > startIndex check
+                const check1 = iVal > startVal;
+                conditionEvaluationHTML = `
+                    <div class="mt-2 p-2 bg-slate-950 rounded border border-slate-800 space-y-1">
+                        <p class="font-semibold text-slate-200">Evaluating: <code class="${condColor}">i > startIndex && nums[i] == nums[i-1]</code></p>
+                        <p>1) <code class="text-indigo-300">i > startIndex</code> (${iVal} > ${startVal}) &rarr; <span class="${check1 ? 'text-amber-400 font-bold' : 'text-emerald-400 font-bold'}">${check1}</span></p>
+                        <p>2) <code class="text-indigo-300">nums[${iVal}] == nums[${iVal-1}]</code> (${currNum} == ${prevNum}) &rarr; <span class="${isDup ? 'text-rose-400 font-bold' : 'text-slate-400'}">${isDup}</span></p>
+                        <p class="mt-1 font-bold ${data.status === 'skipped' ? 'text-rose-400' : 'text-emerald-400'}">
+                            Result: ${data.status === 'skipped' ? 'SKIPPED (Duplicate Sibling)' : 'ACCEPTED (Valid Step)'}
+                        </p>
+                    </div>
+                `;
+            } else {
+                // i > 0 check
+                const check1 = iVal > 0;
+                conditionEvaluationHTML = `
+                    <div class="mt-2 p-2 bg-slate-950 rounded border border-slate-800 space-y-1">
+                        <p class="font-semibold text-slate-200">Evaluating: <code class="${condColor}">i > 0 && nums[i] == nums[i-1]</code></p>
+                        <p>1) <code class="text-indigo-300">i > 0</code> (${iVal} > 0) &rarr; <span class="${check1 ? 'text-rose-400 font-bold' : 'text-slate-400'}">${check1}</span></p>
+                        <p>2) <code class="text-indigo-300">nums[${iVal}] == nums[${iVal-1}]</code> (${currNum} == ${prevNum}) &rarr; <span class="${isDup ? 'text-rose-400 font-bold' : 'text-slate-400'}">${isDup}</span></p>
+                        <p class="mt-1 font-bold ${data.status === 'skipped' ? 'text-rose-400' : 'text-emerald-400'}">
+                            Result: ${data.status === 'skipped' ? 'SKIPPED' : 'ACCEPTED'}
+                        </p>
+                    </div>
+                `;
+            }
+
+            inspector.innerHTML = `
+                <div class="space-y-2">
+                    <div class="flex items-center justify-between">
+                        <span class="font-bold text-white text-sm">Path state: <code class="text-indigo-300">${data.path}</code></span>
+                        <span class="text-xs">${stepType}</span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-[11px] bg-slate-950 p-2 rounded">
+                        <div><span class="text-slate-500">i (Current Index):</span> <strong class="text-white">${iVal}</strong></div>
+                        <div><span class="text-slate-500">startIndex:</span> <strong class="text-white">${startVal}</strong></div>
+                        <div><span class="text-slate-500">Picked Value:</span> <strong class="text-amber-300">${currNum}</strong></div>
+                        <div><span class="text-slate-500">Previous Value:</span> <strong class="text-slate-300">${prevNum}</strong></div>
+                    </div>
+                    ${conditionEvaluationHTML}
+                    ${data.skipReason ? `<p class="text-rose-300 text-xs mt-1 bg-rose-950/40 p-2 rounded border border-rose-800/50"><i class="fa-solid fa-triangle-exclamation me-1"></i> ${data.skipReason}</p>` : ''}
+                </div>
+            `;
+        }
+
+        function update() {
+            // Build trees for both
+            const buggyBuilder = new TreeBuilder(currentNums, false);
+            const buggyTree = buggyBuilder.build();
+
+            const correctBuilder = new TreeBuilder(currentNums, true);
+            const correctTree = correctBuilder.build();
+
+            // Render HTML Trees
+            document.getElementById('tree-container-buggy').innerHTML = renderTreeHTML(buggyTree, false);
+            document.getElementById('tree-container-correct').innerHTML = renderTreeHTML(correctTree, true);
+
+            // Render Subsets Badges
+            const buggySubsets = collectSubsets(buggyTree);
+            const correctSubsets = collectSubsets(correctTree);
+
+            const buggySubsetsContainer = document.getElementById('subsets-buggy');
+            buggySubsetsContainer.innerHTML = buggySubsets.map(s => `
+                <span class="px-2 py-1 rounded bg-slate-800 text-slate-200 border border-slate-700">${s}</span>
+            `).join('');
+
+            const correctSubsetsContainer = document.getElementById('subsets-correct');
+            correctSubsetsContainer.innerHTML = correctSubsets.map(s => `
+                <span class="px-2 py-1 rounded bg-emerald-950 text-emerald-200 border border-emerald-800">${s}</span>
+            `).join('');
+
+            // Check if missing subsets in buggy
+            const warningEl = document.getElementById('missing-warning-buggy');
+            if (buggySubsets.length < correctSubsets.length) {
+                warningEl.classList.remove('hidden');
+            } else {
+                warningEl.classList.add('hidden');
+            }
+        }
+
+        function setPreset(arr) {
+            currentNums = arr;
+            update();
+            document.getElementById('inspector-content').innerHTML = `
+                <p class="text-slate-400 italic">Click on any node in either tree above to inspect its exact variables, loop state, and why it was included or skipped.</p>
+            `;
+        }
+
+        // Initialize on load
+        window.onload = function() {
+            update();
+        };
+    </script>
+</body>
+</html>
