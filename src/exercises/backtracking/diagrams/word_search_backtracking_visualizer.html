@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Search Backtracking Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            500: '#22c65e',
+                            600: '#16a34a',
+                            900: '#14532d',
+                        }
+                    },
+                    fontFamily: {
+                        mono: ['JetBrains Mono', 'Fira Code', 'Monaco', 'monospace'],
+                        sans: ['Inter', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+        }
+
+        .code-font {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* Pulse and highlight animations */
+        @keyframes cellPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.08); }
+        }
+
+        .animate-cell-active {
+            animation: cellPulse 0.3s ease-in-out;
+        }
+
+        .grid-cell {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Highlighted code lines */
+        .line-highlight {
+            background-color: rgba(99, 102, 241, 0.25);
+            border-left: 4px solid #6366f1;
+        }
+        .line-highlight-success {
+            background-color: rgba(34, 197, 94, 0.25);
+            border-left: 4px solid #22c65e;
+        }
+        .line-highlight-fail {
+            background-color: rgba(239, 68, 68, 0.25);
+            border-left: 4px solid #ef4444;
+        }
+
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #1e293b;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100">
+
+    <!-- HEADER -->
+    <header class="border-b border-slate-800 bg-slate-900/80 backdrop-blur sticky top-0 z-50 px-4 py-3">
+        <div class="max-w-7xl mx-auto flex flex-wrap items-center justify-between gap-4">
+            <div class="flex items-center space-x-3">
+                <div class="bg-indigo-600/20 text-indigo-400 p-2 rounded-xl border border-indigo-500/30">
+                    <i class="fa-solid fa-diagram-project text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold tracking-tight text-white flex items-center gap-2">
+                        Word Search Algorithm Visualizer
+                        <span class="text-xs font-normal px-2 py-0.5 rounded-full bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">Backtracking</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Step-by-step recursion execution and state tracking</p>
+                </div>
+            </div>
+
+            <!-- PRESET SELECTOR -->
+            <div class="flex items-center gap-2">
+                <span class="text-xs font-medium text-slate-400 hidden sm:inline">Presets:</span>
+                <button onclick="loadPreset('ABCCED')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                    Word "ABCCED" (Success)
+                </button>
+                <button onclick="loadPreset('SEE')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                    Word "SEE" (Short)
+                </button>
+                <button onclick="loadPreset('ABCB')" class="px-2.5 py-1 text-xs rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 transition">
+                    Word "ABCB" (Backtrack Fail)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- MAIN WORKSPACE -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 md:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+        <!-- LEFT COLUMN: Grid Visualizer & Controls (7 cols) -->
+        <div class="lg:col-span-7 flex flex-col gap-6">
+
+            <!-- CONFIGURATION & CONTROLS CARD -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl">
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <!-- Word Input -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Target Word</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="targetWordInput" value="ABCCED" uppercase
+                                   class="w-full bg-slate-950 border border-slate-700 rounded-lg px-3 py-1.5 text-sm font-semibold tracking-wider text-indigo-300 focus:outline-none focus:border-indigo-500 uppercase">
+                            <button onclick="applyInputs()" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-medium px-3 py-1.5 rounded-lg transition flex items-center gap-1">
+                                <i class="fa-solid fa-play text-xs"></i> Set
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Custom Grid Option -->
+                    <div>
+                        <label class="block text-xs font-medium text-slate-400 mb-1">Grid Controls</label>
+                        <div class="flex gap-2">
+                            <button onclick="randomizeBoard()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1.5">
+                                <i class="fa-solid fa-shuffle text-slate-400"></i> Random Board
+                            </button>
+                            <button onclick="resetSimulation()" class="bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-medium px-3 py-1.5 rounded-lg border border-slate-700 transition flex items-center justify-center gap-1">
+                                <i class="fa-solid fa-rotate-left text-slate-400"></i> Reset
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- PLAYBACK CONTROLS BAR -->
+                <div class="bg-slate-950/80 border border-slate-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3">
+                    <div class="flex items-center gap-2 w-full sm:w-auto justify-center">
+                        <button onclick="stepFirst()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition" title="First Step">
+                            <i class="fa-solid fa-backward-step"></i>
+                        </button>
+                        <button onclick="stepPrev()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition" title="Previous Step">
+                            <i class="fa-solid fa-chevron-left"></i>
+                        </button>
+                        <button id="playPauseBtn" onclick="togglePlay()" class="px-4 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition flex items-center gap-2 shadow-lg shadow-indigo-600/30">
+                            <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                        </button>
+                        <button onclick="stepNext()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition" title="Next Step">
+                            <i class="fa-solid fa-chevron-right"></i>
+                        </button>
+                        <button onclick="stepLast()" class="p-2 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 text-sm transition" title="Last Step">
+                            <i class="fa-solid fa-forward-step"></i>
+                        </button>
+                    </div>
+
+                    <!-- Speed & Progress -->
+                    <div class="flex items-center gap-4 w-full sm:w-auto justify-between sm:justify-end">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                            <input type="range" id="speedSlider" min="50" max="1200" step="50" value="400" 
+                                   class="w-24 accent-indigo-500 cursor-pointer bg-slate-800">
+                        </div>
+                        <span id="stepCounter" class="text-xs font-mono px-2.5 py-1 rounded-md bg-slate-800 text-indigo-300 border border-slate-700">
+                            Step 0 / 0
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Timeline Slider -->
+                <div class="mt-3">
+                    <input type="range" id="timelineScrubber" min="0" max="0" value="0" oninput="scrubToStep(parseInt(this.value))"
+                           class="w-full accent-indigo-500 h-1.5 bg-slate-800 rounded-lg cursor-pointer">
+                </div>
+            </div>
+
+            <!-- WORD MATCH PROGRESS DISPLAY -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                <span class="text-xs font-medium text-slate-400 uppercase tracking-wider">Target Word Match Progress</span>
+                <div id="wordProgressContainer" class="flex items-center gap-2 flex-wrap">
+                    <!-- Dynamic word letter pills will render here -->
+                </div>
+            </div>
+
+            <!-- GRID DISPLAY DISPLAY AREA -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-6 shadow-xl flex flex-col items-center justify-center min-h-[320px] relative overflow-hidden">
+                <div class="absolute top-3 left-4 flex items-center gap-2 text-xs font-medium text-slate-400">
+                    <i class="fa-solid fa-grid-2 text-indigo-400"></i> 2D Board View
+                </div>
+
+                <!-- Legend -->
+                <div class="absolute top-3 right-4 hidden md:flex items-center gap-3 text-[11px] text-slate-400">
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-slate-700 border border-slate-500 inline-block"></span> Unvisited</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-indigo-500 inline-block"></span> Path / Visited (#)</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-amber-500 inline-block"></span> Checking</span>
+                    <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-rose-500 inline-block"></span> Backtrack/Fail</span>
+                </div>
+
+                <!-- Dynamic Grid Container -->
+                <div id="gridContainer" class="grid gap-2 my-6 transition-all duration-300">
+                    <!-- Cells dynamically rendered here -->
+                </div>
+
+                <!-- Current Action Message Box -->
+                <div id="actionBanner" class="w-full bg-slate-950/90 border border-slate-800 rounded-xl p-3 text-sm text-slate-300 flex items-start gap-3 min-h-[58px]">
+                    <div id="actionIcon" class="mt-0.5 text-indigo-400 text-lg">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </div>
+                    <div id="actionText" class="text-xs sm:text-sm font-medium leading-relaxed text-slate-200">
+                        Ready to start visualizer. Click "Play" or "Step Forward" to begin backtracking search.
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- RIGHT COLUMN: Code View & Call Stack (5 cols) -->
+        <div class="lg:col-span-5 flex flex-col gap-6">
+
+            <!-- CODE ALGORITHM PANEL -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-brands fa-java text-orange-400"></i> Backtracking Logic (Java)
+                    </span>
+                    <span id="activeLineBadge" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-indigo-300 border border-slate-700">
+                        Idle
+                    </span>
+                </div>
+
+                <div class="bg-slate-950 border border-slate-800 rounded-xl p-3 code-font text-xs leading-relaxed overflow-x-auto text-slate-300">
+                    <div id="codeLine1" class="py-1 px-2 rounded transition-colors duration-150">
+                        <span class="text-purple-400">if</span> (index == word.length()) <span class="text-emerald-400">return true;</span> <span class="text-slate-500">// Base 1: Success</span>
+                    </div>
+                    <div id="codeLine2" class="py-1 px-2 rounded transition-colors duration-150">
+                        <span class="text-purple-400">if</span> (x &lt; 0 || x &gt;= rows || y &lt; 0 || y &gt;= cols || board[x][y] != word.charAt(index))
+                        <br>&nbsp;&nbsp;<span class="text-rose-400">return false;</span> <span class="text-slate-500">// Base 2: Bounds & Mismatch</span>
+                    </div>
+                    <div id="codeLine3" class="py-1 px-2 rounded transition-colors duration-150">
+                        <span class="text-purple-400">char</span> temp = board[x][y];
+                        <br>board[x][y] = <span class="text-amber-300">'#'</span>; <span class="text-slate-500">// Step 1: Mark Visited</span>
+                    </div>
+                    <div id="codeLine4" class="py-1 px-2 rounded transition-colors duration-150">
+                        <span class="text-purple-400">boolean</span> found = backtrack(x+1, y) || backtrack(x-1, y) ||
+                        <br>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;backtrack(x, y+1) || backtrack(x, y-1); <span class="text-slate-500">// Step 2: Explore</span>
+                    </div>
+                    <div id="codeLine5" class="py-1 px-2 rounded transition-colors duration-150">
+                        board[x][y] = temp; <span class="text-slate-500">// Step 3: Backtrack (Restore)</span>
+                        <br><span class="text-purple-400">return</span> found;
+                    </div>
+                </div>
+            </div>
+
+            <!-- RECURSIVE CALL STACK PANEL -->
+            <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex-1 flex flex-col min-h-[220px]">
+                <div class="flex items-center justify-between mb-3">
+                    <span class="text-xs font-semibold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                        <i class="fa-solid fa-layer-group text-indigo-400"></i> Recursion Call Stack
+                    </span>
+                    <span id="stackDepth" class="text-xs font-mono text-slate-400">Depth: 0</span>
+                </div>
+
+                <div id="callStackContainer" class="flex-1 bg-slate-950 border border-slate-800 rounded-xl p-3 flex flex-col-reverse gap-2 overflow-y-auto max-h-[240px]">
+                    <div class="text-xs text-slate-500 italic text-center py-4">Stack is currently empty.</div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Default Configuration
+        let defaultBoard = [
+            ['A','B','C','E'],
+            ['S','F','C','S'],
+            ['A','D','E','E']
+        ];
+        let currentBoard = JSON.parse(JSON.stringify(defaultBoard));
+        let targetWord = "ABCCED";
+
+        // Simulation State
+        let steps = [];
+        let currentStepIndex = 0;
+        let playInterval = null;
+        let isPlaying = false;
+
+        // --- ALGORITHM SIMULATOR (Pre-computes full step-by-step history) ---
+        class WordSearchSimulator {
+            constructor(board, word) {
+                this.board = board.map(r => [...r]);
+                this.word = word;
+                this.steps = [];
+                this.callStack = [];
+            }
+
+            run() {
+                this.steps = [];
+                this.callStack = [];
+                const rows = this.board.length;
+                const cols = this.board[0].length;
+                let grid = this.board.map(r => [...r]);
+
+                for (let i = 0; i < rows; i++) {
+                    for (let j = 0; j < cols; j++) {
+                        this.addStep(grid, i, j, 0, [], `Main Loop: Selecting cell (${i}, ${j}) containing '${grid[i][j]}' as potential word start.`, 'CHECK_START', 0);
+                        
+                        if (this.backtrack(grid, 0, i, j, [])) {
+                            this.addStep(grid, i, j, this.word.length, [], `🎉 SUCCESS! Target word "${this.word}" completely matched on the grid!`, 'SUCCESS', 1);
+                            return this.steps;
+                        }
+                    }
+                }
+
+                this.addStep(grid, null, null, 0, [], `❌ SEARCH COMPLETED: Word "${this.word}" could NOT be formed on this grid.`, 'FAILURE', 0);
+                return this.steps;
+            }
+
+            backtrack(grid, index, x, y, currentPath) {
+                const stackFrame = `backtrack(x=${x}, y=${y}, index=${index})`;
+                this.callStack.push(stackFrame);
+
+                // 1. BASE CASE 1: Word matched
+                if (index === this.word.length) {
+                    this.addStep(grid, x, y, index, currentPath, `Base Case 1 Matched: Matched all ${this.word.length} characters! Returning true.`, 'SUCCESS_MATCH', 1);
+                    this.callStack.pop();
+                    return true;
+                }
+
+                // 2. BASE CASE 2: Bounds & Mismatch Check
+                const isOutOfBounds = x < 0 || x >= grid.length || y < 0 || y >= grid[0].length;
+                if (isOutOfBounds) {
+                    this.addStep(grid, x, y, index, currentPath, `Base Case 2 Triggered: Cell (${x}, ${y}) is OUT OF BOUNDS! Pruning branch.`, 'OUT_OF_BOUNDS', 2);
+                    this.callStack.pop();
+                    return false;
+                }
+
+                const currentChar = grid[x][y];
+                const expectedChar = this.word.charAt(index);
+
+                if (currentChar !== expectedChar) {
+                    const failReason = (currentChar === '#') 
+                        ? `Cell (${x}, ${y}) is already marked VISITED ('#'). Avoid infinite loops!` 
+                        : `Mismatch at (${x}, ${y})! Board letter '${currentChar}' != Word letter '${expectedChar}' at index ${index}.`;
+                    
+                    this.addStep(grid, x, y, index, currentPath, `Base Case 2 Triggered: ${failReason}`, 'MISMATCH', 2);
+                    this.callStack.pop();
+                    return false;
+                }
+
+                // MATCH FOUND FOR CURRENT CHARACTER!
+                this.addStep(grid, x, y, index, currentPath, `Match found at cell (${x}, ${y})! Board '${currentChar}' matches word character '${expectedChar}' at index ${index}.`, 'MATCH_CHAR', 2);
+
+                // STEP 1: CHOOSE & MARK VISITED
+                const temp = grid[x][y];
+                grid[x][y] = '#';
+                const newPath = [...currentPath, {x, y, char: temp, index}];
+                this.addStep(grid, x, y, index + 1, newPath, `Step 1 (Choose): Saved '${temp}', mutated board[${x}][${y}] to '#' (visited). Advancing index to ${index + 1}.`, 'VISIT', 3);
+
+                // STEP 2: EXPLORE 4 DIRECTIONS
+                const directions = [
+                    { name: 'DOWN (x+1)', dx: 1, dy: 0 },
+                    { name: 'UP (x-1)', dx: -1, dy: 0 },
+                    { name: 'RIGHT (y+1)', dx: 0, dy: 1 },
+                    { name: 'LEFT (y-1)', dx: 0, dy: -1 }
+                ];
+
+                for (let dir of directions) {
+                    const nx = x + dir.dx;
+                    const ny = y + dir.dy;
+                    this.addStep(grid, x, y, index + 1, newPath, `Step 2 (Explore): Recursing ${dir.name} to target neighbor (${nx}, ${ny})...`, 'EXPLORE_DIR', 4);
+                    
+                    if (this.backtrack(grid, index + 1, nx, ny, newPath)) {
+                        this.callStack.pop();
+                        return true;
+                    }
+                }
+
+                // STEP 3: BACKTRACK (RESTORE STATE)
+                grid[x][y] = temp;
+                this.addStep(grid, x, y, index, currentPath, `Step 3 (Backtrack): Dead end reached from (${x}, ${y}). Unmark '#' back to '${temp}'. Restoring state!`, 'BACKTRACK', 5);
+
+                this.callStack.pop();
+                return false;
+            }
+
+            addStep(grid, x, y, index, path, statusText, actionType, lineNum) {
+                this.steps.push({
+                    board: grid.map(r => [...r]),
+                    x,
+                    y,
+                    index,
+                    path: JSON.parse(JSON.stringify(path)),
+                    statusText,
+                    actionType,
+                    lineNum,
+                    callStack: [...this.callStack]
+                });
+            }
+        }
+
+        // --- UI RENDER ENGINE ---
+
+        function initSimulation() {
+            pause();
+            const simulator = new WordSearchSimulator(currentBoard, targetWord);
+            steps = simulator.run();
+            currentStepIndex = 0;
+
+            const scrubber = document.getElementById('timelineScrubber');
+            scrubber.max = Math.max(0, steps.length - 1);
+            scrubber.value = 0;
+
+            renderCurrentStep();
+        }
+
+        function renderCurrentStep() {
+            if (steps.length === 0) return;
+
+            const step = steps[currentStepIndex];
+
+            // 1. Update counter & scrubber
+            document.getElementById('stepCounter').innerText = `Step ${currentStepIndex + 1} / ${steps.length}`;
+            document.getElementById('timelineScrubber').value = currentStepIndex;
+
+            // 2. Render Board Grid
+            renderGrid(step);
+
+            // 3. Render Target Word Progress Pills
+            renderWordProgress(step);
+
+            // 4. Update Action Banner
+            renderActionBanner(step);
+
+            // 5. Highlight Java Code Line
+            highlightCodeLine(step.lineNum, step.actionType);
+
+            // 6. Render Call Stack
+            renderCallStack(step.callStack);
+        }
+
+        function renderGrid(step) {
+            const container = document.getElementById('gridContainer');
+            const rows = currentBoard.length;
+            const cols = currentBoard[0].length;
+
+            container.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+            container.innerHTML = '';
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const cellVal = step.board[r][c];
+                    const isCurrent = (step.x === r && step.y === c);
+                    const pathIndex = step.path.findIndex(p => p.x === r && p.y === c);
+                    const isInPath = pathIndex !== -1;
+
+                    const cell = document.createElement('div');
+                    cell.className = `grid-cell w-14 h-14 sm:w-16 sm:h-16 rounded-xl border-2 flex flex-col items-center justify-center font-bold text-lg sm:text-xl relative shadow-md transition-all`;
+
+                    // Style depending on action/state
+                    if (isCurrent && step.actionType === 'OUT_OF_BOUNDS') {
+                        cell.className += ' bg-rose-950/80 border-rose-500 text-rose-300 animate-cell-active';
+                    } else if (isCurrent && step.actionType === 'MISMATCH') {
+                        cell.className += ' bg-rose-900/60 border-rose-500 text-rose-200 animate-cell-active';
+                    } else if (isCurrent && (step.actionType === 'CHECK_START' || step.actionType === 'MATCH_CHAR')) {
+                        cell.className += ' bg-amber-500/20 border-amber-400 text-amber-200 animate-cell-active shadow-amber-500/20';
+                    } else if (step.actionType === 'BACKTRACK' && isCurrent) {
+                        cell.className += ' bg-orange-900/50 border-orange-500 text-orange-200';
+                    } else if (isInPath || cellVal === '#') {
+                        cell.className += ' bg-indigo-600/30 border-indigo-500 text-indigo-200 shadow-indigo-500/30';
+                    } else {
+                        cell.className += ' bg-slate-800/80 border-slate-700 text-slate-200 hover:border-slate-500';
+                    }
+
+                    // Display content
+                    const charDisplay = document.createElement('span');
+                    charDisplay.innerText = cellVal;
+                    cell.appendChild(charDisplay);
+
+                    // Path Order Badge
+                    if (isInPath) {
+                        const badge = document.createElement('span');
+                        badge.className = 'absolute top-1 right-1 text-[10px] font-mono bg-indigo-500 text-white rounded-full w-4 h-4 flex items-center justify-center font-semibold';
+                        badge.innerText = pathIndex;
+                        cell.appendChild(badge);
+                    } else if (cellVal === '#') {
+                        const badge = document.createElement('span');
+                        badge.className = 'absolute top-1 right-1 text-[9px] font-mono bg-purple-600 text-purple-100 px-1 rounded';
+                        badge.innerText = '#';
+                        cell.appendChild(badge);
+                    }
+
+                    // Coordinates label
+                    const coord = document.createElement('span');
+                    coord.className = 'absolute bottom-1 text-[9px] font-mono text-slate-500';
+                    coord.innerText = `${r},${c}`;
+                    cell.appendChild(coord);
+
+                    container.appendChild(cell);
+                }
+            }
+        }
+
+        function renderWordProgress(step) {
+            const container = document.getElementById('wordProgressContainer');
+            container.innerHTML = '';
+
+            for (let i = 0; i < targetWord.length; i++) {
+                const char = targetWord[i];
+                const pill = document.createElement('div');
+                
+                let isMatched = i < step.index;
+                let isCurrentTarget = (i === step.index);
+
+                pill.className = `px-3 py-1.5 rounded-lg border text-xs font-bold font-mono transition-all flex items-center gap-1.5`;
+
+                if (isMatched) {
+                    pill.className += ' bg-emerald-500/20 border-emerald-500/50 text-emerald-300';
+                    pill.innerHTML = `<i class="fa-solid fa-check text-[10px]"></i> ${char}`;
+                } else if (isCurrentTarget) {
+                    pill.className += ' bg-indigo-500/30 border-indigo-400 text-indigo-200 ring-2 ring-indigo-500/50 scale-105';
+                    pill.innerHTML = `<i class="fa-solid fa-arrow-right text-[10px] text-indigo-400"></i> ${char}`;
+                } else {
+                    pill.className += ' bg-slate-800 border-slate-700 text-slate-500';
+                    pill.innerHTML = `${char}`;
+                }
+
+                container.appendChild(pill);
+            }
+        }
+
+        function renderActionBanner(step) {
+            const bannerText = document.getElementById('actionText');
+            const bannerIcon = document.getElementById('actionIcon');
+
+            bannerText.innerText = step.statusText;
+
+            if (step.actionType === 'SUCCESS' || step.actionType === 'SUCCESS_MATCH') {
+                bannerIcon.innerHTML = `<i class="fa-solid fa-circle-check text-emerald-400"></i>`;
+            } else if (step.actionType === 'OUT_OF_BOUNDS' || step.actionType === 'MISMATCH' || step.actionType === 'FAILURE') {
+                bannerIcon.innerHTML = `<i class="fa-solid fa-triangle-exclamation text-rose-400"></i>`;
+            } else if (step.actionType === 'BACKTRACK') {
+                bannerIcon.innerHTML = `<i class="fa-solid fa-rotate-left text-orange-400"></i>`;
+            } else if (step.actionType === 'VISIT') {
+                bannerIcon.innerHTML = `<i class="fa-solid fa-shoe-prints text-indigo-400"></i>`;
+            } else {
+                bannerIcon.innerHTML = `<i class="fa-solid fa-compass text-amber-400"></i>`;
+            }
+        }
+
+        function highlightCodeLine(lineNum, actionType) {
+            for (let i = 1; i <= 5; i++) {
+                const el = document.getElementById(`codeLine${i}`);
+                el.className = 'py-1 px-2 rounded transition-colors duration-150';
+            }
+
+            const activeBadge = document.getElementById('activeLineBadge');
+
+            if (lineNum > 0) {
+                const activeEl = document.getElementById(`codeLine${lineNum}`);
+                if (actionType === 'SUCCESS' || actionType === 'SUCCESS_MATCH') {
+                    activeEl.className += ' line-highlight-success';
+                    activeBadge.innerText = `Line ${lineNum}: Success Base Case`;
+                    activeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/30';
+                } else if (actionType === 'OUT_OF_BOUNDS' || actionType === 'MISMATCH') {
+                    activeEl.className += ' line-highlight-fail';
+                    activeBadge.innerText = `Line ${lineNum}: Boundary/Mismatch Return`;
+                    activeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30';
+                } else {
+                    activeEl.className += ' line-highlight';
+                    activeBadge.innerText = `Executing Line ${lineNum}`;
+                    activeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-indigo-500/20 text-indigo-300 border border-indigo-500/30';
+                }
+            } else {
+                activeBadge.innerText = 'Idle / Main Loop';
+                activeBadge.className = 'text-[10px] font-mono px-2 py-0.5 rounded bg-slate-800 text-slate-400 border border-slate-700';
+            }
+        }
+
+        function renderCallStack(stack) {
+            const container = document.getElementById('callStackContainer');
+            document.getElementById('stackDepth').innerText = `Depth: ${stack.length}`;
+
+            if (stack.length === 0) {
+                container.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-4">Stack is currently empty.</div>`;
+                return;
+            }
+
+            container.innerHTML = '';
+            stack.forEach((frame, idx) => {
+                const frameEl = document.createElement('div');
+                const isTop = (idx === stack.length - 1);
+
+                frameEl.className = `text-xs font-mono px-3 py-1.5 rounded-lg border transition-all flex items-center justify-between ${
+                    isTop 
+                    ? 'bg-indigo-600/30 border-indigo-500 text-indigo-200 font-semibold shadow-sm' 
+                    : 'bg-slate-900 border-slate-800 text-slate-400'
+                }`;
+
+                frameEl.innerHTML = `
+                    <span><i class="fa-solid fa-code-branch text-[10px] mr-1.5 text-slate-500"></i>${frame}</span>
+                    <span class="text-[10px] text-slate-500">#${idx + 1}</span>
+                `;
+                container.appendChild(frameEl);
+            });
+        }
+
+        // --- CONTROLS & EVENT HANDLERS ---
+
+        function togglePlay() {
+            if (isPlaying) {
+                pause();
+            } else {
+                play();
+            }
+        }
+
+        function play() {
+            if (currentStepIndex >= steps.length - 1) {
+                currentStepIndex = 0;
+            }
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            const speed = 1250 - parseInt(document.getElementById('speedSlider').value);
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderCurrentStep();
+                } else {
+                    pause();
+                }
+            }, speed);
+        }
+
+        function pause() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function stepNext() {
+            pause();
+            if (currentStepIndex < steps.length - 1) {
+                currentStepIndex++;
+                renderCurrentStep();
+            }
+        }
+
+        function stepPrev() {
+            pause();
+            if (currentStepIndex > 0) {
+                currentStepIndex--;
+                renderCurrentStep();
+            }
+        }
+
+        function stepFirst() {
+            pause();
+            currentStepIndex = 0;
+            renderCurrentStep();
+        }
+
+        function stepLast() {
+            pause();
+            currentStepIndex = steps.length - 1;
+            renderCurrentStep();
+        }
+
+        function scrubToStep(val) {
+            pause();
+            currentStepIndex = Math.min(Math.max(0, val), steps.length - 1);
+            renderCurrentStep();
+        }
+
+        function resetSimulation() {
+            initSimulation();
+        }
+
+        function applyInputs() {
+            const wordInput = document.getElementById('targetWordInput').value.trim().toUpperCase();
+            if (!wordInput) return;
+            targetWord = wordInput;
+            initSimulation();
+        }
+
+        function loadPreset(word) {
+            targetWord = word;
+            document.getElementById('targetWordInput').value = word;
+            currentBoard = JSON.parse(JSON.stringify(defaultBoard));
+            initSimulation();
+        }
+
+        function randomizeBoard() {
+            const chars = 'ABCDEFGHISTO';
+            const rows = 3;
+            const cols = 4;
+            let newGrid = [];
+            for (let i = 0; i < rows; i++) {
+                let row = [];
+                for (let j = 0; j < cols; j++) {
+                    row.push(chars.charAt(Math.floor(Math.random() * chars.length)));
+                }
+                newGrid.push(row);
+            }
+            currentBoard = newGrid;
+            initSimulation();
+        }
+
+        // Speed adjustment live update
+        document.getElementById('speedSlider').addEventListener('change', () => {
+            if (isPlaying) {
+                pause();
+                play();
+            }
+        });
+
+        // Initialize on load
+        window.onload = function() {
+            initSimulation();
+        };
+    </script>
+</body>
+</html>
