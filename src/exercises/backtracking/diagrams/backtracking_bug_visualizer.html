@@ -36,7 +36,7 @@
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .node-card:hover {
-            transform: translateY(-2px) scale(1.03);
+            transform: translateY(-2px) scale(1.05);
         }
         .glow-red {
             box-shadow: 0 0 15px rgba(239, 68, 68, 0.4);
@@ -48,26 +48,23 @@
             box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
         }
         .active-node-highlight {
-            ring: 3px solid #3b82f6;
-            box-shadow: 0 0 20px rgba(59, 130, 246, 0.8) !important;
-            transform: scale(1.08) !important;
+            outline: 3px solid #3b82f6;
+            box-shadow: 0 0 25px rgba(59, 130, 246, 0.9) !important;
+            transform: scale(1.1) !important;
             z-index: 30 !important;
         }
-        .dimmed-node {
-            opacity: 0.35;
-            filter: grayscale(40%);
-        }
-        /* Custom scrollbars */
+        /* Fixed scrollbars */
         ::-webkit-scrollbar {
             width: 8px;
             height: 8px;
         }
         ::-webkit-scrollbar-track {
-            background: #0f172a;
+            background: #090d16;
+            border-radius: 6px;
         }
         ::-webkit-scrollbar-thumb {
             background: #334155;
-            border-radius: 4px;
+            border-radius: 6px;
         }
         ::-webkit-scrollbar-thumb:hover {
             background: #475569;
@@ -104,7 +101,6 @@
 
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-6 flex-1 flex flex-col gap-6">
 
-        <!-- Side-by-Side Tree and Output Comparison -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
 
             <!-- LEFT SIDE: BUGGY IN-PLACE MUTATION -->
@@ -139,15 +135,18 @@
 
                     <input type="range" id="buggy-step-scrubber" min="0" max="0" value="0" oninput="scrubToBuggyStep(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-rose-500 mb-3">
                     
-                    <div id="buggy-narrative-box" class="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs min-h-[70px]">
+                    <div id="buggy-narrative-box" class="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs min-h-[75px]">
                         <div id="buggy-step-title" class="font-bold text-rose-300 text-xs mb-1">Initializing...</div>
                         <div id="buggy-step-description" class="text-slate-400 text-[11px] leading-relaxed">Click Play to begin.</div>
                     </div>
                 </div>
 
-                <!-- Call Tree View Container -->
-                <div class="relative min-h-[350px] my-4 overflow-x-auto bg-slate-950/50 rounded-xl border border-slate-800/80 p-4" id="tree-container-buggy">
-                    <!-- Tree rendered dynamically via JS -->
+                <!-- Call Tree View Container with Fixed Height & SVG Layer -->
+                <div class="relative h-[520px] my-4 overflow-auto bg-slate-950/60 rounded-xl border border-slate-800/80 p-6 flex justify-center items-start" id="tree-container-buggy" onscroll="drawAllTreeLines()">
+                    <svg id="svg-lines-buggy" class="absolute top-0 left-0 pointer-events-none z-0 min-w-full min-h-full"></svg>
+                    <div id="tree-content-buggy" class="relative z-10 py-2">
+                        <!-- Tree rendered dynamically via JS -->
+                    </div>
                 </div>
 
                 <!-- Resulting Sets Output -->
@@ -189,15 +188,18 @@
 
                     <input type="range" id="correct-step-scrubber" min="0" max="0" value="0" oninput="scrubToCorrectStep(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-emerald-500 mb-3">
                     
-                    <div id="correct-narrative-box" class="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs min-h-[70px]">
+                    <div id="correct-narrative-box" class="p-2.5 rounded-lg bg-slate-950/80 border border-slate-800 text-xs min-h-[75px]">
                         <div id="correct-step-title" class="font-bold text-emerald-300 text-xs mb-1">Initializing...</div>
                         <div id="correct-step-description" class="text-slate-400 text-[11px] leading-relaxed">Click Play to begin.</div>
                     </div>
                 </div>
 
-                <!-- Call Tree View Container -->
-                <div class="relative min-h-[350px] my-4 overflow-x-auto bg-slate-950/50 rounded-xl border border-slate-800/80 p-4" id="tree-container-correct">
-                    <!-- Tree rendered dynamically via JS -->
+                <!-- Call Tree View Container with Fixed Height & SVG Layer -->
+                <div class="relative h-[520px] my-4 overflow-auto bg-slate-950/60 rounded-xl border border-slate-800/80 p-6 flex justify-center items-start" id="tree-container-correct" onscroll="drawAllTreeLines()">
+                    <svg id="svg-lines-correct" class="absolute top-0 left-0 pointer-events-none z-0 min-w-full min-h-full"></svg>
+                    <div id="tree-content-correct" class="relative z-10 py-2">
+                        <!-- Tree rendered dynamically via JS -->
+                    </div>
                 </div>
 
                 <!-- Resulting Sets Output -->
@@ -244,9 +246,10 @@
             let nodeId = 0;
             let results = [];
 
-            function backtrack(currentResult, openCount, availableCount, depth, label) {
+            function backtrack(currentResult, openCount, availableCount, depth, label, parentId = null) {
                 let node = {
                     id: nodeId++,
+                    parentId: parentId,
                     depth: depth,
                     label: label,
                     entryResult: currentResult,
@@ -271,31 +274,34 @@
                 // Branch 1
                 if (availableCount > 0) {
                     branch1Executed = true;
-                    currentResult += "(";
-                    openCount++;
-                    availableCount--;
+                    let nextResult = currentResult + "(";
+                    let nextOpen = openCount + 1;
+                    let nextAvail = availableCount - 1;
 
-                    let child1 = backtrack(currentResult, openCount, availableCount, depth + 1, "Branch 1: Add '('");
+                    let child1 = backtrack(nextResult, nextOpen, nextAvail, depth + 1, "Branch 1: Add '('", node.id);
                     node.children.push(child1);
                 }
 
                 // Bleed effect tracking
                 if (branch1Executed) {
                     node.bleedOccurred = true;
-                    node.corruptedResultAfterBranch1 = currentResult;
-                    node.corruptedOpenAfterBranch1 = openCount;
-                    node.corruptedAvailAfterBranch1 = availableCount;
+                    node.corruptedResultAfterBranch1 = currentResult + "(";
+                    node.corruptedOpenAfterBranch1 = openCount + 1;
+                    node.corruptedAvailAfterBranch1 = availableCount - 1;
                 }
 
                 // Branch 2
-                if (openCount > 0) {
+                if (openCount > 0 || (branch1Executed && (openCount + 1) > 0)) {
                     let isCorruptedBranch = branch1Executed;
                     
-                    currentResult += ")";
-                    openCount--;
-
-                    let child2 = backtrack(currentResult, openCount, availableCount, depth + 1, 
-                        isCorruptedBranch ? "Branch 2: Add ')' [BLEED!]" : "Branch 2: Add ')'");
+                    let child2 = backtrack(
+                        branch1Executed ? (currentResult + "(" + ")") : (currentResult + ")"),
+                        branch1Executed ? (openCount + 1 - 1) : (openCount - 1),
+                        branch1Executed ? (availableCount - 1) : availableCount,
+                        depth + 1, 
+                        isCorruptedBranch ? "Branch 2: Add ')' [BLEED!]" : "Branch 2: Add ')'",
+                        node.id
+                    );
                     
                     child2.isCorrupted = isCorruptedBranch;
                     node.children.push(child2);
@@ -304,7 +310,7 @@
                 return node;
             }
 
-            let root = backtrack("", 0, n, 0, "Root Call");
+            let root = backtrack("", 0, n, 0, "Root Call", null);
             return { root, results };
         }
 
@@ -312,9 +318,10 @@
             let nodeId = 0;
             let results = [];
 
-            function backtrack(current, open, close, depth, label) {
+            function backtrack(current, open, close, depth, label, parentId = null) {
                 let node = {
                     id: nodeId++,
+                    parentId: parentId,
                     depth: depth,
                     label: label,
                     current: current,
@@ -333,19 +340,19 @@
                 }
 
                 if (open < n) {
-                    let child1 = backtrack(current + "(", open + 1, close, depth + 1, "Add '('");
+                    let child1 = backtrack(current + "(", open + 1, close, depth + 1, "Add '('", node.id);
                     node.children.push(child1);
                 }
 
                 if (close < open) {
-                    let child2 = backtrack(current + ")", open, close + 1, depth + 1, "Add ')'");
+                    let child2 = backtrack(current + ")", open, close + 1, depth + 1, "Add ')'", node.id);
                     node.children.push(child2);
                 }
 
                 return node;
             }
 
-            let root = backtrack("", 0, 0, 0, "Root Call");
+            let root = backtrack("", 0, 0, 0, "Root Call", null);
             return { root, results };
         }
 
@@ -355,39 +362,89 @@
 
             if (n === 1) {
                 buggyTraceSteps = [
-                    { title: "1. Root Frame", desc: "Starts with empty string state.", nodeId: 0 },
-                    { title: "2. Branch 1: Add '('", desc: "Mutates local variable: currentResult += '('.", nodeId: 1 },
-                    { title: "3. Branch 1 Explores Deeper: Add ')'", desc: "Appends ')' to complete '()'.", nodeId: 2 },
-                    { title: "4. Return to Root Frame", desc: "🔥 STATE BLEED: Local currentResult is STILL '(' instead of ''!", nodeId: 0, isBleed: true },
-                    { title: "5. Execution Finished", desc: "Execution ends with polluted variables.", nodeId: 0 }
+                    { title: "1. Root Call (Node 0)", desc: "Starts with currentResult='', openCount=0, availableCount=1.", nodeId: 0 },
+                    { title: "2. Root Mutates Local Vars", desc: "Branch 1 executes: currentResult += '(', openCount=1, avail=0.", nodeId: 0 },
+                    { title: "3. Calls Node 1", desc: "Enters child call with mutated variables currentResult='('.", nodeId: 1 },
+                    { title: "4. Node 1 Mutates & Branch 2 Runs", desc: "availableCount is 0. Branch 2 executes: currentResult += ')', openCount=0.", nodeId: 1 },
+                    { title: "5. Calls Leaf Node 2", desc: "Enters Leaf Node 2 with currentResult='()'.", nodeId: 2 },
+                    { title: "6. Leaf Node 2 Base Case", desc: "openCount=0 && avail=0. Stores output '()' and returns to Node 1.", nodeId: 2 },
+                    { title: "7. Node 1 Returns to Root", desc: "Node 1 finishes execution and pops off stack back to Root.", nodeId: 1 },
+                    { title: "8. 🔥 STATE BLEED AT ROOT!", desc: "Root's local vars were permanently mutated: currentResult='(' and openCount=1!", nodeId: 0, isBleed: true },
+                    { title: "9. Root Executes Branch 2", desc: "Root evaluates if(openCount > 0) -> TRUE! Mutates currentResult += ')' -> '()'.", nodeId: 0, isBleed: true },
+                    { title: "10. Calls Corrupted Node 3", desc: "Calls Node 3 with polluted string '()'.", nodeId: 3 },
+                    { title: "11. Corrupted Leaf Node 3 Output", desc: "Base case stores DUPLICATE output '()'! Execution finishes.", nodeId: 3, isBleed: true }
                 ];
                 correctTraceSteps = [
-                    { title: "1. Root Frame", desc: "Starts with empty string state.", nodeId: 0 },
-                    { title: "2. Branch 1: Add '('", desc: "Passes current + '(' as expression.", nodeId: 1 },
-                    { title: "3. Branch 1 Explores Deeper: Add ')'", desc: "Appends ')' to complete '()'.", nodeId: 2 },
-                    { title: "4. Return to Root Frame", desc: "✓ CLEAN FRAME: Variables remain pristine ('').", nodeId: 0, isClean: true },
-                    { title: "5. Execution Finished", desc: "Isolated expressions preserved memory entirely.", nodeId: 0 }
+                    { title: "1. Root Call (Node 0)", desc: "Starts with current='', open=0, close=0.", nodeId: 0 },
+                    { title: "2. Evaluates open < 1", desc: "Passes expression current + '(' -> '(' into child call.", nodeId: 0 },
+                    { title: "3. Enters Node 1", desc: "Node 1 starts with current='(', open=1, close=0.", nodeId: 1 },
+                    { title: "4. Evaluates close < open", desc: "Passes expression current + ')' -> '()' into child call.", nodeId: 1 },
+                    { title: "5. Enters Leaf Node 2", desc: "Node 2 starts with current='()', open=1, close=1.", nodeId: 2 },
+                    { title: "6. Leaf Node 2 Base Case", desc: "current.length == 2. Stores valid output '()' and returns.", nodeId: 2 },
+                    { title: "7. Node 1 Returns to Root", desc: "Node 1 finishes execution and pops off stack.", nodeId: 1 },
+                    { title: "8. ✓ PRISTINE ROOT FRAME", desc: "Root frame local variables are pristine: current='' and open=0!", nodeId: 0, isClean: true },
+                    { title: "9. Root Evaluates close < open", desc: "close (0) < open (0) is FALSE. Root exits cleanly without error.", nodeId: 0, isClean: true }
                 ];
             } else {
                 buggyTraceSteps = [
-                    { title: "1. Initial Call", desc: "Starts at root.", nodeId: 0 },
-                    { title: "2. Branch 1: Add '('", desc: "Mutates currentResult = '('.", nodeId: 1 },
-                    { title: "3. Level 1 Branch 1: Add '('", desc: "Mutates further: '(( '.", nodeId: 2 },
-                    { title: "4. Level 2 Completes", desc: "Valid combination '(())'.", nodeId: 4 },
-                    { title: "5. Return to Level 1", desc: "🔥 STATE BLEED: Variables retain currentResult='(('!", nodeId: 1, isBleed: true },
-                    { title: "6. Level 1 Branch 2: Add ')'", desc: "Starts with polluted currentResult='(('! Forms '(()'.", nodeId: 5 },
-                    { title: "7. Corrupted Output", desc: "Outputs invalid string '(()))' due to bleed.", nodeId: 7 },
-                    { title: "8. Trace Complete", desc: "Tree corrupted by in-place mutations.", nodeId: 0 }
+                    { title: "1. Root Call (Node 0)", desc: "Starts with currentResult='', openCount=0, availableCount=2.", nodeId: 0 },
+                    { title: "2. Root Branch 1 Mutates Vars", desc: "Mutates local vars: currentResult='(', openCount=1, availableCount=1.", nodeId: 0 },
+                    { title: "3. Calls Node 1", desc: "Enters Node 1 with currentResult='('.", nodeId: 1 },
+                    { title: "4. Node 1 Branch 1 Mutates Vars", desc: "Mutates local vars: currentResult='((', openCount=2, availableCount=0.", nodeId: 1 },
+                    { title: "5. Calls Node 2", desc: "Enters Node 2 with currentResult='(('.", nodeId: 2 },
+                    { title: "6. Node 2 Branch 2 Runs", desc: "availableCount is 0. Branch 2 mutates: currentResult='(()', openCount=1.", nodeId: 2 },
+                    { title: "7. Calls Node 3", desc: "Enters Node 3 with currentResult='(()'.", nodeId: 3 },
+                    { title: "8. Node 3 Branch 2 Runs", desc: "Branch 2 mutates: currentResult='(())', openCount=0.", nodeId: 3 },
+                    { title: "9. Calls Leaf Node 4", desc: "Enters Leaf Node 4 with currentResult='(())'.", nodeId: 4 },
+                    { title: "10. Leaf Node 4 Output", desc: "Base case reached! Outputs valid combination '(())'. Returns to Node 3.", nodeId: 4 },
+                    { title: "11. Returns to Node 3 & Node 2", desc: "Node 3 finishes and returns to Node 2. Node 2 finishes.", nodeId: 3 },
+                    { title: "12. Return to Node 1", desc: "Node 2 pops off call stack back to Node 1.", nodeId: 2 },
+                    { title: "13. 🔥 STATE BLEED AT NODE 1!", desc: "Node 1 resumes after Branch 1! Local vars are POLLUTED: currentResult='((', openCount=2!", nodeId: 1, isBleed: true },
+                    { title: "14. Node 1 Branch 2 Executes", desc: "if(openCount > 0) is TRUE (2 > 0)! Appends ')' -> currentResult becomes '(())'.", nodeId: 1, isBleed: true },
+                    { title: "15. Calls Corrupted Node 5", desc: "Calls Node 5 with polluted currentResult='(())'.", nodeId: 5, isBleed: true },
+                    { title: "16. Node 5 Branch 2 Mutates", desc: "Branch 2 mutates: currentResult='(()))', openCount=0.", nodeId: 5, isBleed: true },
+                    { title: "17. Calls Corrupted Leaf Node 6", desc: "Enters Leaf Node 6 with invalid string '(()))'.", nodeId: 6, isBleed: true },
+                    { title: "18. Corrupted Output Generated", desc: "Outputs invalid string '(()))'! Returns to Node 5 and then Node 1.", nodeId: 6, isBleed: true },
+                    { title: "19. Node 1 Returns to Root", desc: "Node 1 finishes execution and pops off stack back to Root.", nodeId: 1 },
+                    { title: "20. 🔥 STATE BLEED AT ROOT FRAME!", desc: "Root resumes after Branch 1! Local vars POLLUTED: currentResult='(', openCount=1!", nodeId: 0, isBleed: true },
+                    { title: "21. Root Branch 2 Executes", desc: "Root wanted to try ')' on '', but currentResult is '('! Forms '()'!", nodeId: 0, isBleed: true },
+                    { title: "22. Calls Corrupted Node 7", desc: "Enters Node 7 with string '()'.", nodeId: 7, isBleed: true },
+                    { title: "23. Node 7 Branch 1 Mutates", desc: "Mutates local vars: currentResult='()(', openCount=1, avail=0.", nodeId: 7 },
+                    { title: "24. Calls Node 8", desc: "Enters Node 8 with currentResult='()('.", nodeId: 8 },
+                    { title: "25. Node 8 Branch 2 Mutates", desc: "Branch 2 mutates: currentResult='()()', openCount=0.", nodeId: 8 },
+                    { title: "26. Calls Node 9", desc: "Enters Node 9 with currentResult='()()'.", nodeId: 9 },
+                    { title: "27. Corrupted Output Generated", desc: "Outputs string '()()'. Returns to Node 8 and then Node 7.", nodeId: 9 },
+                    { title: "28. Returns to Node 7", desc: "Node 8 finishes and pops off call stack back to Node 7.", nodeId: 8 },
+                    { title: "29. 🔥 STATE BLEED AT NODE 7!", desc: "Node 7 resumes! Local vars POLLUTED: currentResult='()(', openCount=1!", nodeId: 7, isBleed: true },
+                    { title: "30. Node 7 Branch 2 Executes", desc: "Branch 2 runs on polluted vars! Mutates currentResult += ')' -> '()()'.", nodeId: 7, isBleed: true },
+                    { title: "31. Calls Corrupted Node 10", desc: "Enters Node 10 with string '()()'.", nodeId: 10, isBleed: true },
+                    { title: "32. Duplicate Corrupted Output", desc: "Outputs '()()' a SECOND time due to bleed! Returns to Node 7.", nodeId: 10, isBleed: true },
+                    { title: "33. Return to Root", desc: "Node 7 finishes and returns to Root.", nodeId: 7 },
+                    { title: "34. Execution Finished", desc: "Execution finished with 4 outputs containing invalid & duplicate strings!", nodeId: 0, isBleed: true }
                 ];
                 correctTraceSteps = [
-                    { title: "1. Initial Call", desc: "Starts at root.", nodeId: 0 },
-                    { title: "2. Branch 1: Add '('", desc: "Evaluates current + '('.", nodeId: 1 },
-                    { title: "3. Level 1 Branch 1: Add '('", desc: "Evaluates current + '('.", nodeId: 2 },
-                    { title: "4. Level 2 Completes", desc: "Valid combination '(())'.", nodeId: 4 },
-                    { title: "5. Return to Level 1", desc: "✓ CLEAN FRAME: Variables untouched.", nodeId: 1, isClean: true },
-                    { title: "6. Level 1 Branch 2: Add ')'", desc: "Clean start! Forms '()'.", nodeId: 3 },
-                    { title: "7. Valid Output", desc: "Outputs valid string '()()'.", nodeId: 6 },
-                    { title: "8. Trace Complete", desc: "Tree perfect via isolated expressions.", nodeId: 0 }
+                    { title: "1. Root Call (Node 0)", desc: "Starts with current='', open=0, close=0.", nodeId: 0 },
+                    { title: "2. Evaluates open < 2", desc: "Passes expression current + '(' -> '(' into child call.", nodeId: 0 },
+                    { title: "3. Enters Node 1", desc: "Node 1 starts with current='(', open=1, close=0.", nodeId: 1 },
+                    { title: "4. Evaluates open < 2", desc: "Passes expression current + '(' -> '((' into child call.", nodeId: 2 },
+                    { title: "5. Enters Node 2", desc: "Node 2 starts with current='((', open=2, close=0.", nodeId: 2 },
+                    { title: "6. Evaluates close < open", desc: "Passes expression current + ')' -> '(()' into child call.", nodeId: 2 },
+                    { title: "7. Enters Node 3", desc: "Node 3 starts with current='(()', open=2, close=1.", nodeId: 3 },
+                    { title: "8. Evaluates close < open", desc: "Passes expression current + ')' -> '(())' into child call.", nodeId: 3 },
+                    { title: "9. Enters Valid Leaf Node 4", desc: "Node 4 starts with current='(())', open=2, close=2.", nodeId: 4 },
+                    { title: "10. Leaf Node 4 Base Case", desc: "current.length == 4. Stores valid combination '(())' and returns.", nodeId: 4 },
+                    { title: "11. Returns to Node 3, Node 2, Node 1", desc: "Calls return back up to Node 1.", nodeId: 3 },
+                    { title: "12. Return to Node 1 Frame", desc: "Call stack unwinds back to Node 1.", nodeId: 1 },
+                    { title: "13. ✓ PRISTINE FRAME AT NODE 1", desc: "Node 1 frame is completely pristine: current='(', open=1, close=0!", nodeId: 1, isClean: true },
+                    { title: "14. Node 1 Evaluates close < open", desc: "0 < 1 is TRUE. Passes expression current + ')' -> '()' into child call.", nodeId: 1, isClean: true },
+                    { title: "15. Enters Node 5", desc: "Node 5 starts with current='()', open=1, close=1.", nodeId: 5 },
+                    { title: "16. Node 5 Evaluates open < 2", desc: "Passes expression current + '(' -> '()(' into child call.", nodeId: 5 },
+                    { title: "17. Enters Node 6", desc: "Node 6 starts with current='()(', open=2, close=1.", nodeId: 6 },
+                    { title: "18. Node 6 Evaluates close < open", desc: "Passes expression current + ')' -> '()()' into child call.", nodeId: 6 },
+                    { title: "19. Enters Valid Leaf Node 7", desc: "Node 7 starts with current='()()', open=2, close=2.", nodeId: 7 },
+                    { title: "20. Leaf Node 7 Base Case", desc: "current.length == 4. Stores valid combination '()()' and returns.", nodeId: 7 },
+                    { title: "21. Return to Root Frame", desc: "Unwinds back to Root Frame (Node 0).", nodeId: 0 },
+                    { title: "22. ✓ PRISTINE ROOT FRAME", desc: "Root frame is pristine: current=''. Execution complete with perfect results!", nodeId: 0, isClean: true }
                 ];
             }
         }
@@ -422,16 +479,16 @@
 
             let childrenHTML = '';
             if (node.children && node.children.length > 0) {
-                childrenHTML = `<div class="flex items-start justify-center gap-3 mt-5 relative">${node.children.map(child => renderBuggyTreeHTML(child, activeNodeId)).join('')}</div>`;
+                childrenHTML = `<div class="flex items-start justify-center gap-6 mt-8 relative">${node.children.map(child => renderBuggyTreeHTML(child, activeNodeId)).join('')}</div>`;
             }
 
             return `
                 <div class="flex flex-col items-center relative">
-                    <div onclick="inspectNode(${nodeDataJSON})" class="node-card cursor-pointer p-2 rounded-xl border ${statusClasses} ${borderGlow} ${activeClass} flex flex-col items-center gap-1 z-10 min-w-[90px] text-center shadow-lg">
-                        <span class="font-mono text-[11px] font-bold">${resultText}</span>
-                        <div class="text-[8px] font-mono text-slate-400">op:${node.entryOpen} | av:${node.entryAvail}</div>
-                        ${node.isCorrupted ? `<span class="px-1 py-0.5 rounded bg-rose-500/30 text-rose-200 text-[8px] font-bold">⚡ CORRUPT</span>` : ''}
-                        ${node.bleedOccurred && !node.isCorrupted ? `<span class="px-1 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[8px] font-bold">⚠️ BLEED</span>` : ''}
+                    <div data-node-id="${node.id}" ${node.parentId !== null ? `data-parent-id="${node.parentId}"` : ''} onclick="inspectNode(${nodeDataJSON})" class="node-card cursor-pointer p-2.5 rounded-xl border ${statusClasses} ${borderGlow} ${activeClass} flex flex-col items-center gap-1 z-10 min-w-[95px] text-center shadow-lg bg-slate-900">
+                        <span class="font-mono text-xs font-bold">${resultText}</span>
+                        <div class="text-[9px] font-mono text-slate-400">op:${node.entryOpen} | av:${node.entryAvail}</div>
+                        ${node.isCorrupted ? `<span class="px-1.5 py-0.5 rounded bg-rose-500/30 text-rose-200 text-[8px] font-bold">⚡ CORRUPT</span>` : ''}
+                        ${node.bleedOccurred && !node.isCorrupted ? `<span class="px-1.5 py-0.5 rounded bg-amber-500/30 text-amber-200 text-[8px] font-bold">⚠️ BLEED</span>` : ''}
                     </div>
                     ${childrenHTML}
                 </div>
@@ -460,19 +517,110 @@
 
             let childrenHTML = '';
             if (node.children && node.children.length > 0) {
-                childrenHTML = `<div class="flex items-start justify-center gap-3 mt-5 relative">${node.children.map(child => renderCorrectTreeHTML(child, activeNodeId)).join('')}</div>`;
+                childrenHTML = `<div class="flex items-start justify-center gap-6 mt-8 relative">${node.children.map(child => renderCorrectTreeHTML(child, activeNodeId)).join('')}</div>`;
             }
 
             return `
                 <div class="flex flex-col items-center relative">
-                    <div onclick="inspectNode(${nodeDataJSON})" class="node-card cursor-pointer p-2 rounded-xl border ${statusClasses} ${borderGlow} ${activeClass} flex flex-col items-center gap-1 z-10 min-w-[90px] text-center shadow-lg">
-                        <span class="font-mono text-[11px] font-bold">${resultText}</span>
-                        <div class="text-[8px] font-mono text-slate-400">op:${node.open} | cl:${node.close}</div>
-                        ${node.isBase ? `<span class="px-1 py-0.5 rounded bg-emerald-500/30 text-emerald-200 text-[8px] font-bold">✓ VALID</span>` : ''}
+                    <div data-node-id="${node.id}" ${node.parentId !== null ? `data-parent-id="${node.parentId}"` : ''} onclick="inspectNode(${nodeDataJSON})" class="node-card cursor-pointer p-2.5 rounded-xl border ${statusClasses} ${borderGlow} ${activeClass} flex flex-col items-center gap-1 z-10 min-w-[95px] text-center shadow-lg bg-slate-900">
+                        <span class="font-mono text-xs font-bold">${resultText}</span>
+                        <div class="text-[9px] font-mono text-slate-400">op:${node.open} | cl:${node.close}</div>
+                        ${node.isBase ? `<span class="px-1.5 py-0.5 rounded bg-emerald-500/30 text-emerald-200 text-[8px] font-bold">✓ VALID</span>` : ''}
                     </div>
                     ${childrenHTML}
                 </div>
             `;
+        }
+
+        function drawTreeLines(containerId, svgId, activeNodeId) {
+            const container = document.getElementById(containerId);
+            const svg = document.getElementById(svgId);
+            if (!container || !svg) return;
+
+            const width = Math.max(container.scrollWidth, container.clientWidth, 600);
+            const height = Math.max(container.scrollHeight, container.clientHeight, 500);
+            svg.setAttribute('width', width);
+            svg.setAttribute('height', height);
+            svg.style.width = width + 'px';
+            svg.style.height = height + 'px';
+
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrow-rose" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#f43f5e" />
+                    </marker>
+                    <marker id="arrow-emerald" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#10b981" />
+                    </marker>
+                    <marker id="arrow-slate" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#475569" />
+                    </marker>
+                    <marker id="arrow-blue" viewBox="0 0 10 10" refX="6" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 1 L 8 5 L 0 9 z" fill="#3b82f6" />
+                    </marker>
+                </defs>
+            `;
+
+            const containerRect = container.getBoundingClientRect();
+            const childNodes = container.querySelectorAll('.node-card[data-parent-id]');
+
+            childNodes.forEach(childEl => {
+                const parentId = childEl.getAttribute('data-parent-id');
+                const parentEl = container.querySelector(`.node-card[data-node-id="${parentId}"]`);
+                if (!parentEl) return;
+
+                const pRect = parentEl.getBoundingClientRect();
+                const cRect = childEl.getBoundingClientRect();
+
+                const startX = pRect.left - containerRect.left + container.scrollLeft + pRect.width / 2;
+                const startY = pRect.top - containerRect.top + container.scrollTop + pRect.height;
+                const endX = cRect.left - containerRect.left + container.scrollLeft + cRect.width / 2;
+                const endY = cRect.top - containerRect.top + container.scrollTop;
+
+                const deltaY = Math.max(16, (endY - startY) / 2);
+                const pathData = `M ${startX} ${startY} C ${startX} ${startY + deltaY}, ${endX} ${endY - deltaY}, ${endX} ${endY}`;
+
+                const isChildActive = childEl.getAttribute('data-node-id') == activeNodeId;
+                const isCorrupted = childEl.classList.contains('glow-red');
+                
+                let strokeColor = '#475569';
+                let strokeWidth = '2';
+                let marker = 'url(#arrow-slate)';
+
+                if (isChildActive) {
+                    strokeColor = '#3b82f6';
+                    strokeWidth = '3.5';
+                    marker = 'url(#arrow-blue)';
+                } else if (isCorrupted) {
+                    strokeColor = '#f43f5e';
+                    strokeWidth = '2.5';
+                    marker = 'url(#arrow-rose)';
+                } else if (containerId.includes('correct')) {
+                    strokeColor = '#059669';
+                    strokeWidth = '2';
+                    marker = 'url(#arrow-emerald)';
+                }
+
+                const pathEl = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                pathEl.setAttribute('d', pathData);
+                pathEl.setAttribute('stroke', strokeColor);
+                pathEl.setAttribute('stroke-width', strokeWidth);
+                pathEl.setAttribute('fill', 'none');
+                pathEl.setAttribute('marker-end', marker);
+
+                svg.appendChild(pathEl);
+            });
+        }
+
+        function drawAllTreeLines() {
+            if (buggyTraceSteps.length > 0) {
+                const step = buggyTraceSteps[buggyCurrentStepIdx];
+                drawTreeLines('tree-container-buggy', 'svg-lines-buggy', step ? step.nodeId : null);
+            }
+            if (correctTraceSteps.length > 0) {
+                const step = correctTraceSteps[correctCurrentStepIdx];
+                drawTreeLines('tree-container-correct', 'svg-lines-correct', step ? step.nodeId : null);
+            }
         }
 
         function updateBuggyStepUI() {
@@ -483,16 +631,17 @@
             document.getElementById('buggy-step-scrubber').value = buggyCurrentStepIdx;
             document.getElementById('buggy-step-badge').innerText = `Step ${buggyCurrentStepIdx + 1} / ${buggyTraceSteps.length}`;
             document.getElementById('buggy-step-title').innerHTML = step.isBleed ? `<i class="fa-solid fa-triangle-exclamation text-amber-400"></i> ${step.title}` : step.title;
-            document.getElementById('buggy-step-description').innerHTML = step.isBleed ? `<span class="text-amber-300">${step.desc}</span>` : step.desc;
+            document.getElementById('buggy-step-description').innerHTML = step.isBleed ? `<span class="text-amber-300 font-semibold">${step.desc}</span>` : step.desc;
 
-            document.getElementById('tree-container-buggy').innerHTML = renderBuggyTreeHTML(buggyTreeData.root, step.nodeId);
+            document.getElementById('tree-content-buggy').innerHTML = renderBuggyTreeHTML(buggyTreeData.root, step.nodeId);
             
             document.getElementById('btn-prev-buggy').disabled = buggyCurrentStepIdx === 0;
             document.getElementById('btn-next-buggy').disabled = buggyCurrentStepIdx === buggyTraceSteps.length - 1;
 
-            // Optional: Auto-trigger inspector
             let targetNode = findNodeById(buggyTreeData.root, step.nodeId);
             if (targetNode) inspectNode(formatNodeForInspector(targetNode, 'buggy'));
+
+            requestAnimationFrame(() => drawTreeLines('tree-container-buggy', 'svg-lines-buggy', step.nodeId));
         }
 
         function nextBuggyStep() {
@@ -547,16 +696,17 @@
             document.getElementById('correct-step-scrubber').value = correctCurrentStepIdx;
             document.getElementById('correct-step-badge').innerText = `Step ${correctCurrentStepIdx + 1} / ${correctTraceSteps.length}`;
             document.getElementById('correct-step-title').innerHTML = step.isClean ? `<i class="fa-solid fa-check text-emerald-400"></i> ${step.title}` : step.title;
-            document.getElementById('correct-step-description').innerHTML = step.isClean ? `<span class="text-emerald-300">${step.desc}</span>` : step.desc;
+            document.getElementById('correct-step-description').innerHTML = step.isClean ? `<span class="text-emerald-300 font-semibold">${step.desc}</span>` : step.desc;
 
-            document.getElementById('tree-container-correct').innerHTML = renderCorrectTreeHTML(correctTreeData.root, step.nodeId);
+            document.getElementById('tree-content-correct').innerHTML = renderCorrectTreeHTML(correctTreeData.root, step.nodeId);
             
             document.getElementById('btn-prev-correct').disabled = correctCurrentStepIdx === 0;
             document.getElementById('btn-next-correct').disabled = correctCurrentStepIdx === correctTraceSteps.length - 1;
 
-             // Optional: Auto-trigger inspector
-             let targetNode = findNodeById(correctTreeData.root, step.nodeId);
+            let targetNode = findNodeById(correctTreeData.root, step.nodeId);
             if (targetNode) inspectNode(formatNodeForInspector(targetNode, 'correct'));
+
+            requestAnimationFrame(() => drawTreeLines('tree-container-correct', 'svg-lines-correct', step.nodeId));
         }
 
         function nextCorrectStep() {
@@ -604,6 +754,7 @@
         }
 
         function findNodeById(node, id) {
+            if (!node) return null;
             if (node.id === id) return node;
             for (let child of node.children) {
                 let found = findNodeById(child, id);
@@ -700,7 +851,10 @@
             updateAll();
         }
 
-        window.onload = updateAll;
+        window.onload = () => {
+            updateAll();
+            window.addEventListener('resize', drawAllTreeLines);
+        };
     </script>
 </body>
 </html>
