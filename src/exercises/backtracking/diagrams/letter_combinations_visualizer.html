@@ -1,0 +1,951 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Letter Combinations of a Phone Number - Decision Tree Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .key-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-amber {
+            animation: pulse-amber-glow 1.5s infinite;
+        }
+        @keyframes pulse-amber-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.5s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.9); }
+            50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.18);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .tree-edge {
+            transition: stroke 0.3s ease, stroke-width 0.3s ease;
+        }
+        .tree-node-group {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .tree-node-group:hover {
+            transform: scale(1.06);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shadow-lg shadow-amber-950">
+                    <i class="fa-solid fa-tty text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Letter Combinations Visualizer
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Phone Keypad Decision Tree</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Multi-way Decision Tree: Choose $\rightarrow$ Recurse $\rightarrow$ Un-choose Backtracking</p>
+                </div>
+            </div>
+
+            <!-- Presets & Custom Input -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-72">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-amber-500 cursor-pointer">
+                        <option value="0">1. Standard Example (digits = "23")</option>
+                        <option value="1">2. Single Digit (digits = "2")</option>
+                        <option value="2">3. 4-Branch Keypad (digits = "79")</option>
+                        <option value="3">4. 3 Digits Sequence (digits = "234")</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customModalBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-amber-400 font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Controls Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Playback Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-amber-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-amber-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            </div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1800">0.5x Speed</option>
+                        <option value="1100" selected>1.0x Speed</option>
+                        <option value="600">1.8x Speed</option>
+                        <option value="300">3.0x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:p-6 shadow-xl flex flex-col gap-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-phone text-amber-400"></i> Phone Keypad Mapping & Pointer Inspector
+                    </h2>
+                    <p class="text-xs text-slate-500">At recursion depth <code class="mono text-amber-300">index</code>, we inspect <code class="mono text-amber-300">digits[index]</code> and iterate through its mapped letter pool.</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs flex-wrap">
+                    <span class="flex items-center gap-1.5 text-amber-400"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Active Digit Pointer</span>
+                    <span class="flex items-center gap-1.5 text-cyan-400"><span class="w-2.5 h-2.5 rounded-full bg-cyan-500"></span> Active Candidate Letter</span>
+                </div>
+            </div>
+
+            <!-- Keypad Display -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3" id="keypadGrid">
+                <!-- Populated via JS -->
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-diagram-project"></i> Multi-Way Decision Tree Canvas
+                    </h2>
+                    <p class="text-xs text-slate-400">Visualizing parent-child transitions: Each level branches into candidate letter choices ($3^N$ or $4^N$ leaf combinations)</p>
+                </div>
+
+                <!-- Tree Legend -->
+                <div class="flex items-center gap-3 text-[11px] flex-wrap">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-300"></span> Active Path Node</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-950 border-2 border-emerald-400"></span> Valid Letter Combination</span>
+                </div>
+            </div>
+
+            <!-- SVG Canvas -->
+            <div class="w-full h-full min-h-[380px] max-h-[520px] relative bg-slate-950/80 border border-slate-800/80 rounded-xl overflow-auto p-2">
+                <svg id="decisionTreeSvg" class="w-full min-w-[750px] h-[480px]" viewBox="0 0 1000 480" preserveAspectRatio="xMidYMid meet">
+                    <!-- Tree dynamic SVG elements -->
+                </svg>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: State Monitors & Narrative (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- StringBuilder currentPath Monitor -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2.5 flex items-center justify-between">
+                        <span><i class="fa-solid fa-list-check text-cyan-400 mr-1.5"></i> currentPath Monitor (StringBuilder)</span>
+                        <span id="depthBadge" class="mono text-xs text-amber-300 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/30">Index: 0 / N</span>
+                    </h2>
+
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[11px] font-medium text-slate-400">Current Combination Buffer:</span>
+                        <div id="currentPathContainer" class="flex flex-wrap items-center gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl min-h-[48px]">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Narrative Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Why this decision?</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[55px]">
+                        Click Play or Next to step through the decision tree and watch how phone letter choices branch out.
+                    </p>
+
+                    <!-- Explanatory Notice -->
+                    <div id="explanationCallout" class="mt-auto bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 flex items-start gap-2.5">
+                        <i id="calloutIcon" class="fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5"></i>
+                        <p id="calloutText" class="text-[11px] leading-relaxed">
+                            <strong class="text-amber-300">Choose $\rightarrow$ Recurse $\rightarrow$ Un-choose:</strong> At index <code class="mono text-cyan-300">i</code>, we append candidate letter <code class="mono text-cyan-300">c</code>, recurse to <code class="mono text-cyan-300">index + 1</code>, and then delete <code class="mono text-cyan-300">c</code> to try the next letter choice.
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Found Combinations List -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-square-check"></i> Found Combinations (<span id="solutionsCount">0</span>)
+                        </h2>
+                    </div>
+                    <div id="solutionsContainer" class="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1">
+                        <span class="text-xs text-slate-500 italic">No combinations generated yet...</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Code Trace & Recursion Call Stack (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- Java Code Trace Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Execution Code Trace
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">Multi-way Decision Tree</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public void backtrack(result, currentPath, phoneDigits, index, digits) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-400">if (index == digits.length()) { // Base Case</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-10 text-emerald-400">result.add(currentPath.toString());</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-10">return;</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-6">int currentDigit = digits.charAt(index) - '0';</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded pl-6">String letters = phoneDigits.get(currentDigit);</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">for (int i = 0; i &lt; letters.length(); i++) {</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-10 text-sky-300">currentPath.append(letters.charAt(i)); // 1. CHOOSE</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded pl-10">backtrack(result, currentPath, phoneDigits, index + 1, digits); // 2. RECURSE</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded pl-10 text-rose-300">currentPath.deleteCharAt(currentPath.length() - 1); // 3. UN-CHOOSE</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+
+                <!-- Call Stack Visualizer -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-purple-400"></i> Recursion Call Stack
+                        </h2>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </div>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[180px] overflow-y-auto pr-1">
+                        <!-- Stack items populated via JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Inputs Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i> Custom Digits Input
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-amber-300 mb-1">Phone Digits String (Keys 2-9)</label>
+                    <input id="inputDigits" type="text" value="23" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Error message
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Cancel</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-amber-950">Build Visualizer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const KEYPAD_MAP = {
+            2: "abc",
+            3: "def",
+            4: "ghi",
+            5: "jkl",
+            6: "mno",
+            7: "pqrs",
+            8: "tuv",
+            9: "wxyz"
+        };
+
+        const PRESETS = [
+            { name: "1. Standard Example (digits = \"23\")", digits: "23" },
+            { name: "2. Single Digit (digits = \"2\")", digits: "2" },
+            { name: "3. 4-Branch Keypad (digits = \"79\")", digits: "79" },
+            { name: "4. 3 Digits Sequence (digits = \"234\")", digits: "234" }
+        ];
+
+        // State Variables
+        let rawDigits = "23";
+        let steps = [];
+        let decisionTreeNodes = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1100;
+
+        // Trace Generator Algorithm for Letter Combinations
+        function generateLetterCombinationSteps(digitsStr) {
+            const stepsList = [];
+            const solutions = [];
+            decisionTreeNodes = [];
+
+            let globalNodeId = 0;
+            const stack = [];
+
+            // Root Node Initialization
+            const treeRoot = {
+                id: 0,
+                parentId: null,
+                path: "",
+                choiceType: 'ROOT',
+                charAdded: "",
+                index: 0,
+                status: 'EXPLORING',
+                depth: 0,
+                children: []
+            };
+            decisionTreeNodes.push(treeRoot);
+
+            // Initial Step
+            stepsList.push({
+                type: 'START',
+                title: 'Step 1: Start Letter Combinations Algorithm',
+                desc: `Input digits = "${digitsStr}". Length N = ${digitsStr.length}. Initialized root node with empty StringBuilder path "".`,
+                digits: digitsStr,
+                index: 0,
+                path: "",
+                nodeId: 0,
+                activeLetter: null,
+                stack: [],
+                solutions: [],
+                codeLine: 1
+            });
+
+            function backtrackTrace(currentPathStr, index, parentNodeId) {
+                const currentNodeId = parentNodeId;
+                const callFrame = { index, path: currentPathStr, nodeId: currentNodeId };
+                stack.push(callFrame);
+
+                // Check Base Case: index == digitsStr.length
+                if (index === digitsStr.length) {
+                    solutions.push(currentPathStr);
+                    const treeNode = decisionTreeNodes.find(n => n.id === currentNodeId);
+                    if (treeNode) treeNode.status = 'SOLUTION';
+
+                    stepsList.push({
+                        type: 'SOLUTION_MATCH',
+                        title: `🎉 COMPLETED COMBINATION: "${currentPathStr}"`,
+                        desc: `Base Case index == digits.length() (${index}). Formed completed word "${currentPathStr}"! Added string copy to result.`,
+                        digits: digitsStr,
+                        index,
+                        path: currentPathStr,
+                        nodeId: currentNodeId,
+                        activeLetter: null,
+                        stack: [...stack],
+                        solutions: [...solutions],
+                        codeLine: 3
+                    });
+
+                    stack.pop();
+                    return;
+                }
+
+                const digitChar = digitsStr.charAt(index);
+                const digitNum = digitChar - '0';
+                const letters = KEYPAD_MAP[digitNum] || "";
+
+                stepsList.push({
+                    type: 'READ_DIGIT',
+                    title: `Read Digit '${digitChar}' at index ${index}`,
+                    desc: `digits.charAt(${index}) = '${digitChar}' -> Keypad Map: "${letters}". Loop will branch into ${letters.length} letter choices.`,
+                    digits: digitsStr,
+                    index,
+                    path: currentPathStr,
+                    nodeId: currentNodeId,
+                    activeLetter: null,
+                    stack: [...stack],
+                    solutions: [...solutions],
+                    codeLine: 7
+                });
+
+                for (let i = 0; i < letters.length; i++) {
+                    const letter = letters.charAt(i);
+
+                    // 1. CHOOSE
+                    const nextPath = currentPathStr + letter;
+                    globalNodeId++;
+                    const childNodeId = globalNodeId;
+
+                    const childNode = {
+                        id: childNodeId,
+                        parentId: parentNodeId,
+                        path: nextPath,
+                        choiceType: 'BRANCH',
+                        charAdded: letter,
+                        index: index + 1,
+                        status: 'EXPLORING',
+                        depth: index + 1,
+                        children: []
+                    };
+                    decisionTreeNodes.push(childNode);
+
+                    const parentNode = decisionTreeNodes.find(n => n.id === parentNodeId);
+                    if (parentNode) parentNode.children.push(childNodeId);
+
+                    stepsList.push({
+                        type: 'CHOOSE',
+                        title: `1. CHOOSE: Append '${letter}' from Digit '${digitChar}'`,
+                        desc: `Appended '${letter}' -> currentPath = "${nextPath}". Recursing to index ${index + 1}...`,
+                        digits: digitsStr,
+                        index,
+                        path: nextPath,
+                        nodeId: childNodeId,
+                        activeLetter: letter,
+                        stack: [...stack],
+                        solutions: [...solutions],
+                        codeLine: 9
+                    });
+
+                    // 2. RECURSE
+                    backtrackTrace(nextPath, index + 1, childNodeId);
+
+                    // 3. UN-CHOOSE (Backtrack)
+                    stepsList.push({
+                        type: 'UNCHOOSE',
+                        title: `3. UN-CHOOSE: Delete character '${letter}'`,
+                        desc: `Popped '${letter}' from currentPath -> Restored path = "${currentPathStr}". Loop moves to next candidate letter choice.`,
+                        digits: digitsStr,
+                        index,
+                        path: currentPathStr,
+                        nodeId: parentNodeId,
+                        activeLetter: letter,
+                        stack: [...stack],
+                        solutions: [...solutions],
+                        codeLine: 11
+                    });
+                }
+
+                stack.pop();
+            }
+
+            if (digitsStr.length > 0) {
+                backtrackTrace("", 0, 0);
+            }
+
+            // Finish Step
+            stepsList.push({
+                type: 'FINISH',
+                title: 'Letter Combinations Generation Complete! 🎉',
+                desc: `Successfully generated all ${solutions.length} unique combination(s) for input digits = "${digitsStr}"!`,
+                digits: digitsStr,
+                index: digitsStr.length,
+                path: "",
+                nodeId: 0,
+                activeLetter: null,
+                stack: [],
+                solutions: [...solutions],
+                codeLine: 1
+            });
+
+            return stepsList;
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Slider
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Step Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Path Depth Badge
+            document.getElementById('depthBadge').innerText = `Index: ${step.index} / ${step.digits.length}`;
+
+            // Path Pills
+            const pathContainer = document.getElementById('currentPathContainer');
+            if (!step.path || step.path.length === 0) {
+                pathContainer.innerHTML = `<span class="text-xs text-slate-500 italic">"" (empty path buffer)</span>`;
+            } else {
+                pathContainer.innerHTML = step.path.split('').map((ch, idx) => `
+                    <span class="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-300 border border-amber-500/40 mono text-xs font-bold shadow-sm flex items-center gap-1.5">
+                        <span class="text-[10px] text-slate-400 font-normal">pos[${idx}]:</span> '${ch}'
+                    </span>
+                `).join('');
+            }
+
+            // Solutions List
+            const solContainer = document.getElementById('solutionsContainer');
+            document.getElementById('solutionsCount').innerText = step.solutions.length;
+
+            if (step.solutions.length === 0) {
+                solContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No combinations generated yet...</span>`;
+            } else {
+                solContainer.innerHTML = step.solutions.map((sol, idx) => `
+                    <div class="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 mono text-xs font-bold flex items-center gap-1.5 shadow-md">
+                        <span class="text-emerald-500 font-normal">#${idx + 1}:</span> "${sol}"
+                    </div>
+                `).join('');
+            }
+
+            // Code Line Highlighting
+            for (let i = 1; i <= 13; i++) {
+                const line = document.getElementById(`code-line-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((frame, depth) => `
+                    <div class="p-2.5 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-purple-950/40 border-purple-500/60 text-purple-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-purple-400' : 'bg-slate-600'}"></span>
+                            backtrack(index:${frame.index})
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            path: "${frame.path}"
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Render Keypad Grid
+            renderKeypadGrid(step);
+
+            // Render Decision Tree Canvas
+            renderDecisionTreeSvg(step);
+        }
+
+        function renderKeypadGrid(step) {
+            const container = document.getElementById('keypadGrid');
+            let html = '';
+
+            for (let digit = 2; digit <= 9; digit++) {
+                const letters = KEYPAD_MAP[digit];
+                const activeDigitChar = step.digits.charAt(step.index);
+                const isCurrentDigit = (activeDigitChar && parseInt(activeDigitChar) === digit);
+
+                let cardStyle = "bg-slate-950/80 border-slate-800/80 text-slate-400";
+                let badgeHtml = `<span class="text-[9px] text-slate-500 font-normal">key ${digit}</span>`;
+
+                if (isCurrentDigit) {
+                    cardStyle = "bg-amber-500/20 border-2 border-amber-400 text-amber-300 pulse-amber scale-105 shadow-lg shadow-amber-950";
+                    badgeHtml = `<span class="text-[9px] font-bold text-amber-400 uppercase tracking-tighter">ACTIVE DIGIT</span>`;
+                }
+
+                html += `
+                    <div class="key-card p-3 rounded-xl border flex flex-col items-center justify-center gap-1 ${cardStyle}">
+                        <div class="flex items-center justify-between w-full">
+                            <span class="mono text-base font-bold text-slate-100">${digit}</span>
+                            ${badgeHtml}
+                        </div>
+                        <div class="mono text-xs font-semibold tracking-wider text-cyan-300">
+                            "${letters}"
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderDecisionTreeSvg(step) {
+            const svg = document.getElementById('decisionTreeSvg');
+            if (!decisionTreeNodes || decisionTreeNodes.length === 0) return;
+
+            const svgWidth = 1000;
+
+            function computeLeafSpan(node) {
+                if (!node.children || node.children.length === 0) {
+                    node.leafSpan = 1;
+                    return 1;
+                }
+                let span = 0;
+                node.children.forEach(childId => {
+                    const childNode = decisionTreeNodes.find(n => n.id === childId);
+                    if (childNode) span += computeLeafSpan(childNode);
+                });
+                node.leafSpan = span;
+                return span;
+            }
+
+            const rootNode = decisionTreeNodes.find(n => n.id === 0);
+            if (rootNode) computeLeafSpan(rootNode);
+
+            const coords = new Map();
+
+            function computeNodeCoords(node, startX, endX, depth) {
+                if (!node) return;
+                const x = (startX + endX) / 2;
+                const y = 45 + depth * 85;
+                coords.set(node.id, { x, y, node });
+
+                let curX = startX;
+                const totalSpan = node.leafSpan || 1;
+                const widthPerLeaf = (endX - startX) / totalSpan;
+
+                node.children.forEach(childId => {
+                    const childNode = decisionTreeNodes.find(n => n.id === childId);
+                    if (childNode) {
+                        const childWidth = childNode.leafSpan * widthPerLeaf;
+                        const childEndX = curX + childWidth;
+                        computeNodeCoords(childNode, curX, childEndX, depth + 1);
+                        curX = childEndX;
+                    }
+                });
+            }
+
+            if (rootNode) computeNodeCoords(rootNode, 30, svgWidth - 30, 0);
+
+            const activeStackNodeIds = new Set(step.stack.map(s => s.nodeId));
+            if (step.nodeId !== null) activeStackNodeIds.add(step.nodeId);
+
+            // 1. Draw Edges
+            let edgesSvg = '';
+            decisionTreeNodes.forEach(node => {
+                if (node.parentId !== null) {
+                    const parentCoord = coords.get(node.parentId);
+                    const childCoord = coords.get(node.id);
+
+                    if (parentCoord && childCoord) {
+                        const isActiveEdge = activeStackNodeIds.has(node.id) && activeStackNodeIds.has(node.parentId);
+
+                        let stroke = '#38bdf8';
+                        let strokeWidth = '1.5';
+
+                        if (isActiveEdge) {
+                            stroke = '#f59e0b';
+                            strokeWidth = '3';
+                        }
+
+                        const midX = (parentCoord.x + childCoord.x) / 2;
+                        const midY = (parentCoord.y + childCoord.y) / 2;
+
+                        edgesSvg += `
+                            <line x1="${parentCoord.x}" y1="${parentCoord.y + 15}" x2="${childCoord.x}" y2="${childCoord.y - 15}" 
+                                  stroke="${stroke}" stroke-width="${strokeWidth}" class="tree-edge" />
+                            
+                            <rect x="${midX - 16}" y="${midY - 9}" width="32" height="16" rx="4" 
+                                  fill="#090d16" stroke="${stroke}" stroke-width="1" />
+                            <text x="${midX}" y="${midY + 3}" text-anchor="middle" font-family="Fira Code, monospace" 
+                                  font-size="9" font-weight="bold" fill="${stroke}">
+                                + '${node.charAdded}'
+                            </text>
+                        `;
+                    }
+                }
+            });
+
+            // 2. Draw Nodes
+            let nodesSvg = '';
+            decisionTreeNodes.forEach(node => {
+                const coord = coords.get(node.id);
+                if (!coord) return;
+
+                const isActive = (step.nodeId === node.id);
+                const isPathActive = activeStackNodeIds.has(node.id);
+
+                let fill = '#0f172a';
+                let stroke = '#334155';
+                let textColor = '#cbd5e1';
+                let labelText = node.path === "" ? '""' : `"${node.path}"`;
+
+                let badgeOverlay = '';
+
+                if (node.status === 'SOLUTION') {
+                    fill = '#064e3b';
+                    stroke = '#10b981';
+                    textColor = '#a7f3d0';
+                    badgeOverlay = `
+                        <circle cx="${coord.x + 28}" cy="${coord.y - 12}" r="8" fill="#10b981" />
+                        <text x="${coord.x + 28}" y="${coord.y - 9}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="bold" fill="#022c22">✓</text>
+                    `;
+                }
+
+                if (isActive) {
+                    fill = '#b45309';
+                    stroke = '#f59e0b';
+                    textColor = '#ffffff';
+                } else if (isPathActive && node.status !== 'SOLUTION') {
+                    stroke = '#f59e0b';
+                }
+
+                nodesSvg += `
+                    <g class="tree-node-group">
+                        <rect x="${coord.x - 30}" y="${coord.y - 15}" width="60" height="30" rx="8" 
+                              fill="${fill}" stroke="${stroke}" stroke-width="${isActive ? '2.5' : '1.5'}" />
+                        
+                        <text x="${coord.x}" y="${coord.y + 4}" text-anchor="middle" font-family="Fira Code, monospace" 
+                              font-size="10" font-weight="bold" fill="${textColor}">
+                            ${labelText}
+                        </text>
+
+                        ${badgeOverlay}
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = `${edgesSvg}${nodesSvg}`;
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            const preset = PRESETS[presetIdx];
+            rawDigits = preset.digits;
+
+            steps = generateLetterCombinationSteps(rawDigits);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const strInput = document.getElementById('inputDigits').value.trim();
+                const errorBox = document.getElementById('modalError');
+
+                try {
+                    if (!strInput || strInput.length === 0) throw new Error('Digits string cannot be empty!');
+                    if (!/^[2-9]+$/.test(strInput)) throw new Error('Digits must only contain phone keypad numbers from 2 to 9!');
+                    if (strInput.length > 4) throw new Error('String length must be <= 4 for clean decision tree visualization!');
+
+                    rawDigits = strInput;
+
+                    steps = generateLetterCombinationSteps(rawDigits);
+                    document.getElementById('stepProgress').max = steps.length - 1;
+                    currentStepIndex = 0;
+
+                    renderStep(0);
+                    modal.classList.add('hidden');
+                } catch (err) {
+                    errorBox.innerText = err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initApp() {
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
