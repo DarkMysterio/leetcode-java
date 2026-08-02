@@ -1,0 +1,1087 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Palindrome Partitioning - Binary Decision Tree Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .char-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-amber {
+            animation: pulse-amber-glow 1.5s infinite;
+        }
+        @keyframes pulse-amber-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7); }
+            50% { box-shadow: 0 0 0 8px rgba(245, 158, 11, 0); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.5s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.9); }
+            50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); }
+        }
+        .pulse-rose {
+            animation: pulse-rose-glow 1.2s infinite;
+        }
+        @keyframes pulse-rose-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(244, 63, 94, 0.9); }
+            50% { box-shadow: 0 0 0 10px rgba(244, 63, 94, 0); }
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.18);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .tree-edge {
+            transition: stroke 0.3s ease, stroke-width 0.3s ease;
+        }
+        .tree-node-group {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .tree-node-group:hover {
+            transform: scale(1.06);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400 shadow-lg shadow-amber-950">
+                    <i class="fa-solid fa-code-branch text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Palindrome Partitioning Visualizer
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-amber-500/20 text-amber-300 border border-amber-500/30">Binary Choice Tree</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Cut (New Substring) vs. Merge (Append to Last) Decision Tree</p>
+                </div>
+            </div>
+
+            <!-- Preset Datasets -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-72">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-amber-500 cursor-pointer">
+                        <option value="0">1. Standard Example (s = "aab")</option>
+                        <option value="1">2. Multi-Palindrome (s = "aaba")</option>
+                        <option value="2">3. Symmetric Palindrome (s = "aba")</option>
+                        <option value="3">4. Distinct Characters (s = "abc")</option>
+                        <option value="4">5. Long Palindrome (s = "racecar")</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customModalBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-amber-400 font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Step Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-amber-600 hover:bg-amber-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-amber-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-amber-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            </div>
+
+            <!-- Speed Selector -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1800">0.5x Speed</option>
+                        <option value="1100" selected>1.0x Speed</option>
+                        <option value="600">1.8x Speed</option>
+                        <option value="300">3.0x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-5 lg:p-6 shadow-xl flex flex-col gap-5">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                        <i class="fa-solid fa-font text-amber-400"></i> Input String Inspection (`s`)
+                    </h2>
+                    <p class="text-xs text-slate-500">At index 0, character <code class="mono text-amber-300">s[0]</code> initializes the path. For index 1..N-1, we choose to <strong class="text-sky-400">Cut</strong> (new string) or <strong class="text-purple-400">Merge</strong> (append to last).</p>
+                </div>
+                <div class="flex items-center gap-3 text-xs flex-wrap">
+                    <span class="flex items-center gap-1.5 text-amber-400"><span class="w-2.5 h-2.5 rounded-full bg-amber-500"></span> Current Pointer (index)</span>
+                    <span class="flex items-center gap-1.5 text-slate-400"><span class="w-2.5 h-2.5 rounded-full bg-slate-700"></span> String Length N = <span id="strLenText" class="mono font-bold text-amber-300">3</span></span>
+                </div>
+            </div>
+
+            <!-- String Characters Row -->
+            <div class="relative py-2 overflow-x-auto min-h-[90px]">
+                <div id="stringContainer" class="flex items-center gap-3 relative min-w-max px-2">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </section>
+
+        <section class="bg-slate-900 border border-slate-800/80 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-800 pb-3">
+                <div>
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-amber-400 flex items-center gap-2">
+                        <i class="fa-solid fa-diagram-project"></i> Binary Decision Tree Canvas
+                    </h2>
+                    <p class="text-xs text-slate-400">Visualizing parent-child relationships, Cut vs. Merge choices, and validation states</p>
+                </div>
+
+                <!-- Tree Legend -->
+                <div class="flex items-center gap-3 text-[11px] flex-wrap">
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-300"></span> Active Path Node</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-950 border-2 border-emerald-400"></span> Valid Palindrome Partition</span>
+                    <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-rose-950 border-2 border-rose-500"></span> Invalid Partition (Non-Palindrome)</span>
+                </div>
+            </div>
+
+            <!-- SVG Canvas -->
+            <div class="w-full h-full min-h-[380px] max-h-[520px] relative bg-slate-950/80 border border-slate-800/80 rounded-xl overflow-auto p-2">
+                <svg id="decisionTreeSvg" class="w-full min-w-[750px] h-[480px]" viewBox="0 0 1000 480" preserveAspectRatio="xMidYMid meet">
+                    <defs>
+                        <marker id="arrow-cut" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+                        </marker>
+                        <marker id="arrow-merge" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#c084fc" />
+                        </marker>
+                        <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+                        </marker>
+                    </defs>
+                    <!-- Tree dynamic SVG elements -->
+                </svg>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: State Monitors & Narrative (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- Current Path Container -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                    <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 border-b border-slate-800 pb-2.5 flex items-center justify-between">
+                        <span><i class="fa-solid fa-list-check text-cyan-400 mr-1.5"></i> currentArray Monitor</span>
+                        <span id="depthBadge" class="mono text-xs text-amber-300 font-bold bg-amber-500/10 px-2.5 py-0.5 rounded border border-amber-500/30">Index: 1 / N</span>
+                    </h2>
+
+                    <div class="flex flex-col gap-2">
+                        <span class="text-[11px] font-medium text-slate-400">Current Substring List:</span>
+                        <div id="currentPathContainer" class="flex flex-wrap items-center gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl min-h-[48px]">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Explanation / Decision Narrative Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Why this decision?</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[55px]">
+                        Click Play or Next to step through the binary decision tree and watch how Cut vs. Merge decisions branch out.
+                    </p>
+
+                    <!-- Palindrome Validation Box -->
+                    <div id="validationCallout" class="mt-auto bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 flex items-start gap-2.5">
+                        <i id="validationIcon" class="fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5"></i>
+                        <p id="validationText" class="text-[11px] leading-relaxed">
+                            <strong class="text-amber-300">Binary Tree Choices:</strong> At index <code class="mono text-cyan-300">i</code>, Choice 1 adds <code class="mono text-cyan-300">s.charAt(i)</code> as a brand new substring (Cut). Choice 2 appends it to the last string (Merge).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Found Valid Partitions List -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-square-check"></i> Found Valid Palindrome Partitions (<span id="solutionsCount">0</span>)
+                        </h2>
+                    </div>
+                    <div id="solutionsContainer" class="flex flex-wrap gap-2 max-h-[140px] overflow-y-auto pr-1">
+                        <span class="text-xs text-slate-500 italic">No valid partitions found yet...</span>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Code Trace & Recursion Call Stack (6 cols) -->
+            <div class="lg:col-span-6 flex flex-col gap-6">
+
+                <!-- Java Code Trace Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Execution Code Trace
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">Binary Decision Tree</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public void backtrack(result, currentArray, index, s) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-400">if (index == s.length()) { // Base Case</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-10 text-emerald-400">if (allPalindromes(currentArray)) result.add(new ArrayList&lt;&gt;(currentArray));</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-10">return;</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-6 text-sky-300">// CHOICE 1: CUT (New Substring)</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded pl-6">currentArray.add(String.valueOf(s.charAt(index)));</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded pl-6">backtrack(result, currentArray, index + 1, s);</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-6">currentArray.remove(currentArray.size() - 1); // Backtrack</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded pl-6 text-purple-300">// CHOICE 2: MERGE (Append to Last Substring)</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded pl-6">int lastIdx = currentArray.size() - 1;</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-6">String orig = currentArray.get(lastIdx);</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded pl-6">currentArray.set(lastIdx, orig + s.charAt(index));</div>
+                        <div id="code-line-14" class="code-line px-2 py-0.5 rounded pl-6">backtrack(result, currentArray, index + 1, s);</div>
+                        <div id="code-line-15" class="code-line px-2 py-0.5 rounded pl-6">currentArray.set(lastIdx, orig); // Backtrack String</div>
+                        <div id="code-line-16" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+
+                <!-- Call Stack Visualizer -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2.5">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-purple-400"></i> Recursion Call Stack
+                        </h2>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </div>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[180px] overflow-y-auto pr-1">
+                        <!-- Stack items populated via JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Inputs Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-amber-400"></i> Custom String Input
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block font-medium text-amber-300 mb-1">Target String `s` (Lowercase letters)</label>
+                    <input id="inputString" type="text" value="aab" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-amber-500">
+                </div>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Error message
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Cancel</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-amber-950">Build Visualizer</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PRESETS = [
+            { name: "1. Standard Example (s = \"aab\")", s: "aab" },
+            { name: "2. Multi-Palindrome (s = \"aaba\")", s: "aaba" },
+            { name: "3. Symmetric Palindrome (s = \"aba\")", s: "aba" },
+            { name: "4. Distinct Characters (s = \"abc\")", s: "abc" },
+            { name: "5. Long Palindrome (s = \"racecar\")", s: "racecar" }
+        ];
+
+        // State Variables
+        let rawString = "aab";
+        let steps = [];
+        let decisionTreeNodes = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1100;
+
+        function validatePalindrome(str) {
+            let l = 0, r = str.length - 1;
+            while (l < r) {
+                if (str.charAt(l) !== str.charAt(r)) return false;
+                l++;
+                r--;
+            }
+            return true;
+        }
+
+        // Trace Generator Algorithm for Palindrome Partitioning (Binary Decision Tree Approach)
+        function generatePalindromeSteps(s) {
+            const stepsList = [];
+            const solutions = [];
+            decisionTreeNodes = [];
+
+            let globalNodeId = 0;
+            const stack = [];
+
+            // Root Node Initialization
+            const initialPath = [s.charAt(0)];
+            const treeRoot = {
+                id: 0,
+                parentId: null,
+                path: [...initialPath],
+                choiceType: 'ROOT',
+                charAdded: s.charAt(0),
+                index: 1,
+                status: 'EXPLORING',
+                depth: 1,
+                children: []
+            };
+            decisionTreeNodes.push(treeRoot);
+
+            // Start Step
+            stepsList.push({
+                type: 'START',
+                title: 'Step 1: Initialize Path with s[0]',
+                desc: `Input s = "${s}". Pre-seeded currentArray with first character s[0] = "${s.charAt(0)}". Binary decision tree choices will start from index 1.`,
+                s: s,
+                index: 1,
+                path: [...initialPath],
+                nodeId: 0,
+                stack: [],
+                solutions: [],
+                codeLine: 2
+            });
+
+            function backtrackTrace(currentArray, index, parentNodeId) {
+                const currentNodeId = parentNodeId;
+                const callFrame = { index, path: [...currentArray], nodeId: currentNodeId };
+                stack.push(callFrame);
+
+                // Check Base Case: index == s.length
+                if (index === s.length) {
+                    let allValid = true;
+                    const invalidSubstrings = [];
+
+                    currentArray.forEach(sub => {
+                        if (!validatePalindrome(sub)) {
+                            allValid = false;
+                            invalidSubstrings.push(sub);
+                        }
+                    });
+
+                    const treeNode = decisionTreeNodes.find(n => n.id === currentNodeId);
+
+                    if (allValid) {
+                        solutions.push([...currentArray]);
+                        if (treeNode) treeNode.status = 'SOLUTION';
+
+                        stepsList.push({
+                            type: 'VALID_SOLUTION',
+                            title: `🎉 VALID PALINDROME PARTITION: [${currentArray.map(x => '"' + x + '"').join(', ')}]`,
+                            desc: `Base Case index == s.length() (${index}). ALL substrings [${currentArray.map(x => '"' + x + '"').join(', ')}] are valid palindromes! Added copy to result.`,
+                            s: s,
+                            index,
+                            path: [...currentArray],
+                            nodeId: currentNodeId,
+                            stack: [...stack],
+                            solutions: [...solutions],
+                            codeLine: 3,
+                            isValid: true
+                        });
+                    } else {
+                        if (treeNode) treeNode.status = 'INVALID';
+
+                        stepsList.push({
+                            type: 'INVALID_PARTITION',
+                            title: `✕ INVALID PARTITION: [${currentArray.map(x => '"' + x + '"').join(', ')}]`,
+                            desc: `Base Case index == s.length() (${index}). Substring(s) [${invalidSubstrings.map(x => '"' + x + '"').join(', ')}] are NOT palindromes! Rejecting branch.`,
+                            s: s,
+                            index,
+                            path: [...currentArray],
+                            nodeId: currentNodeId,
+                            stack: [...stack],
+                            solutions: [...solutions],
+                            codeLine: 4,
+                            isValid: false,
+                            invalidSubstrings
+                        });
+                    }
+
+                    stack.pop();
+                    return;
+                }
+
+                const charAtIdx = s.charAt(index);
+
+                // -------------------------------------------------------------
+                // CHOICE 1: CUT (Add s[index] as new substring element)
+                // -------------------------------------------------------------
+                globalNodeId++;
+                const childNodeCutId = globalNodeId;
+                const pathCut = [...currentArray, charAtIdx];
+
+                const childNodeCut = {
+                    id: childNodeCutId,
+                    parentId: parentNodeId,
+                    path: [...pathCut],
+                    choiceType: 'CUT',
+                    charAdded: charAtIdx,
+                    index: index + 1,
+                    status: 'EXPLORING',
+                    depth: index + 1,
+                    children: []
+                };
+                decisionTreeNodes.push(childNodeCut);
+
+                const parentNodeCut = decisionTreeNodes.find(n => n.id === parentNodeId);
+                if (parentNodeCut) parentNodeCut.children.push(childNodeCutId);
+
+                stepsList.push({
+                    type: 'CHOICE_CUT',
+                    title: `Choice 1 (CUT): Add s[${index}] = "${charAtIdx}" as NEW Substring`,
+                    desc: `CUT CHOICE: Put a partition cut before index ${index}. Added "${charAtIdx}" as new element -> [${pathCut.map(x => '"' + x + '"').join(', ')}]. Recursing to index ${index + 1}...`,
+                    s: s,
+                    index,
+                    path: [...pathCut],
+                    nodeId: childNodeCutId,
+                    stack: [...stack],
+                    solutions: [...solutions],
+                    codeLine: 7
+                });
+
+                // Recurse Cut Branch
+                backtrackTrace(pathCut, index + 1, childNodeCutId);
+
+                // Backtrack Cut
+                stepsList.push({
+                    type: 'BACKTRACK_CUT',
+                    title: `Backtrack Cut Choice: Remove "${charAtIdx}"`,
+                    desc: `UN-CHOOSE CUT: Popped "${charAtIdx}" -> Restored path [${currentArray.map(x => '"' + x + '"').join(', ')}]. Now testing Choice 2 (MERGE)...`,
+                    s: s,
+                    index,
+                    path: [...currentArray],
+                    nodeId: parentNodeId,
+                    stack: [...stack],
+                    solutions: [...solutions],
+                    codeLine: 9
+                });
+
+                // -------------------------------------------------------------
+                // CHOICE 2: MERGE (Append s[index] to last substring element)
+                // -------------------------------------------------------------
+                globalNodeId++;
+                const childNodeMergeId = globalNodeId;
+                const pathMerge = [...currentArray];
+                const lastIdx = pathMerge.length - 1;
+                const origString = pathMerge[lastIdx];
+                pathMerge[lastIdx] = origString + charAtIdx;
+
+                const childNodeMerge = {
+                    id: childNodeMergeId,
+                    parentId: parentNodeId,
+                    path: [...pathMerge],
+                    choiceType: 'MERGE',
+                    charAdded: charAtIdx,
+                    index: index + 1,
+                    status: 'EXPLORING',
+                    depth: index + 1,
+                    children: []
+                };
+                decisionTreeNodes.push(childNodeMerge);
+
+                const parentNodeMerge = decisionTreeNodes.find(n => n.id === parentNodeId);
+                if (parentNodeMerge) parentNodeMerge.children.push(childNodeMergeId);
+
+                stepsList.push({
+                    type: 'CHOICE_MERGE',
+                    title: `Choice 2 (MERGE): Append s[${index}] = "${charAtIdx}" to Last Substring`,
+                    desc: `MERGE CHOICE: Appended "${charAtIdx}" to "${origString}" -> "${origString + charAtIdx}". Path -> [${pathMerge.map(x => '"' + x + '"').join(', ')}]. Recursing to index ${index + 1}...`,
+                    s: s,
+                    index,
+                    path: [...pathMerge],
+                    nodeId: childNodeMergeId,
+                    stack: [...stack],
+                    solutions: [...solutions],
+                    codeLine: 13
+                });
+
+                // Recurse Merge Branch
+                backtrackTrace(pathMerge, index + 1, childNodeMergeId);
+
+                // Backtrack Merge
+                stepsList.push({
+                    type: 'BACKTRACK_MERGE',
+                    title: `Backtrack Merge Choice: Restore last substring to "${origString}"`,
+                    desc: `UN-CHOOSE MERGE: Restored last string to "${origString}" -> Path [${currentArray.map(x => '"' + x + '"').join(', ')}]. Completed choices at index ${index}.`,
+                    s: s,
+                    index,
+                    path: [...currentArray],
+                    nodeId: parentNodeId,
+                    stack: [...stack],
+                    solutions: [...solutions],
+                    codeLine: 15
+                });
+
+                stack.pop();
+            }
+
+            backtrackTrace(initialPath, 1, 0);
+
+            // Finish Step
+            stepsList.push({
+                type: 'FINISH',
+                title: 'Binary Decision Tree Traversal Complete! 🎉',
+                desc: `Successfully generated all ${solutions.length} valid palindrome partition(s) for input s = "${s}"!`,
+                s: s,
+                index: s.length,
+                path: [],
+                nodeId: 0,
+                stack: [],
+                solutions: [...solutions],
+                codeLine: 1
+            });
+
+            return stepsList;
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Slider
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Step Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Path Depth Badge
+            document.getElementById('depthBadge').innerText = `Index: ${step.index} / ${step.s.length}`;
+
+            // Path Pills
+            const pathContainer = document.getElementById('currentPathContainer');
+            if (step.path.length === 0) {
+                pathContainer.innerHTML = `<span class="text-xs text-slate-500 italic">[ ] (empty)</span>`;
+            } else {
+                pathContainer.innerHTML = step.path.map((sub, idx) => {
+                    const isPal = validatePalindrome(sub);
+                    const pillColor = isPal ? 
+                        'bg-emerald-500/20 text-emerald-300 border-emerald-500/40' : 
+                        'bg-rose-500/20 text-rose-300 border-rose-500/40';
+                    return `
+                        <span class="px-3 py-1.5 rounded-lg border mono text-xs font-bold shadow-sm flex items-center gap-1.5 ${pillColor}">
+                            <span class="text-[10px] text-slate-400 font-normal">#${idx + 1}:</span> "${sub}"
+                            <i class="fa-solid ${isPal ? 'fa-check text-emerald-400' : 'fa-xmark text-rose-400'} text-[10px]"></i>
+                        </span>
+                    `;
+                }).join('');
+            }
+
+            // Solutions List
+            const solContainer = document.getElementById('solutionsContainer');
+            document.getElementById('solutionsCount').innerText = step.solutions.length;
+
+            if (step.solutions.length === 0) {
+                solContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No valid partitions found yet...</span>`;
+            } else {
+                solContainer.innerHTML = step.solutions.map((sol, idx) => `
+                    <div class="px-3 py-1.5 rounded-xl bg-emerald-950/60 border border-emerald-500/40 text-emerald-300 mono text-xs font-bold flex items-center gap-1.5 shadow-md">
+                        <span class="text-emerald-500 font-normal">#${idx + 1}:</span> [${sol.map(x => '"' + x + '"').join(', ')}]
+                    </div>
+                `).join('');
+            }
+
+            // Code Line Highlighting
+            for (let i = 1; i <= 16; i++) {
+                const line = document.getElementById(`code-line-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((frame, depth) => `
+                    <div class="p-2.5 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-purple-950/40 border-purple-500/60 text-purple-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-purple-400' : 'bg-slate-600'}"></span>
+                            backtrack(index:${frame.index})
+                        </span>
+                        <span class="text-[10px] px-2 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            [${frame.path.map(x => '"' + x + '"').join(', ')}]
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Validation Notice Callout
+            const valIcon = document.getElementById('validationIcon');
+            const valText = document.getElementById('validationText');
+
+            if (step.type === 'VALID_SOLUTION') {
+                valIcon.className = "fa-solid fa-circle-check text-emerald-400 text-sm mt-0.5";
+                valText.innerHTML = `<strong class="text-emerald-400">🎉 VALID PALINDROME PARTITION:</strong> Every string in [${step.path.map(x => '"' + x + '"').join(', ')}] passed the two-pointer palindrome check!`;
+            } else if (step.type === 'INVALID_PARTITION') {
+                valIcon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-sm mt-0.5";
+                valText.innerHTML = `<strong class="text-rose-400">✕ INVALID PARTITION REJECTED:</strong> Substring(s) [${step.invalidSubstrings.map(x => '"' + x + '"').join(', ')}] failed palindrome validation because reverse != forward string!`;
+            } else {
+                valIcon.className = "fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5";
+                valText.innerHTML = `<strong class="text-amber-300">Binary Tree Choices:</strong> Choice 1 (CUT) adds <code class="mono text-cyan-300">s.charAt(${step.index})</code> as a new element. Choice 2 (MERGE) appends it to the last element.`;
+            }
+
+            // Render Input String Cards
+            renderStringCards(step);
+
+            // Render Decision Tree Canvas
+            renderDecisionTreeSvg(step);
+        }
+
+        function renderStringCards(step) {
+            const container = document.getElementById('stringContainer');
+            const str = step.s;
+            document.getElementById('strLenText').innerText = str.length;
+
+            let html = '';
+            for (let idx = 0; idx < str.length; idx++) {
+                const char = str.charAt(idx);
+                const isCurrentIndex = (step.index === idx);
+
+                let cardStyle = "bg-slate-800/80 border-slate-700 text-slate-300";
+                let badgeHtml = `<span class="text-[9px] font-semibold text-slate-500 uppercase tracking-tighter">i=${idx}</span>`;
+
+                if (isCurrentIndex) {
+                    cardStyle = "bg-amber-500/20 border-2 border-amber-400 text-amber-300 pulse-amber scale-105 shadow-lg shadow-amber-950";
+                    badgeHtml = `<span class="text-[9px] font-bold text-amber-400 uppercase tracking-tighter">INDEX POINTER</span>`;
+                }
+
+                html += `
+                    <div class="char-card flex flex-col items-center relative min-w-[54px]">
+                        <span class="text-[10px] mono text-slate-500 mb-0.5">i=${idx}</span>
+                        <div class="w-12 h-12 rounded-xl border flex flex-col items-center justify-center font-bold text-base shadow-md ${cardStyle} transition-all">
+                            <span>"${char}"</span>
+                        </div>
+                        <div class="h-4 mt-1 text-center">
+                            ${badgeHtml}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        function renderDecisionTreeSvg(step) {
+            const svg = document.getElementById('decisionTreeSvg');
+            if (!decisionTreeNodes || decisionTreeNodes.length === 0) return;
+
+            const svgWidth = 1000;
+
+            function computeLeafSpan(node) {
+                if (!node.children || node.children.length === 0) {
+                    node.leafSpan = 1;
+                    return 1;
+                }
+                let span = 0;
+                node.children.forEach(childId => {
+                    const childNode = decisionTreeNodes.find(n => n.id === childId);
+                    if (childNode) span += computeLeafSpan(childNode);
+                });
+                node.leafSpan = span;
+                return span;
+            }
+
+            const rootNode = decisionTreeNodes.find(n => n.id === 0);
+            if (rootNode) computeLeafSpan(rootNode);
+
+            const coords = new Map();
+
+            function computeNodeCoords(node, startX, endX, depth) {
+                if (!node) return;
+                const x = (startX + endX) / 2;
+                const y = 45 + depth * 80;
+                coords.set(node.id, { x, y, node });
+
+                let curX = startX;
+                const totalSpan = node.leafSpan || 1;
+                const widthPerLeaf = (endX - startX) / totalSpan;
+
+                node.children.forEach(childId => {
+                    const childNode = decisionTreeNodes.find(n => n.id === childId);
+                    if (childNode) {
+                        const childWidth = childNode.leafSpan * widthPerLeaf;
+                        const childEndX = curX + childWidth;
+                        computeNodeCoords(childNode, curX, childEndX, depth + 1);
+                        curX = childEndX;
+                    }
+                });
+            }
+
+            if (rootNode) computeNodeCoords(rootNode, 30, svgWidth - 30, 0);
+
+            const activeStackNodeIds = new Set(step.stack.map(s => s.nodeId));
+            if (step.nodeId !== null) activeStackNodeIds.add(step.nodeId);
+
+            // 1. Draw Edges
+            let edgesSvg = '';
+            decisionTreeNodes.forEach(node => {
+                if (node.parentId !== null) {
+                    const parentCoord = coords.get(node.parentId);
+                    const childCoord = coords.get(node.id);
+
+                    if (parentCoord && childCoord) {
+                        const isActiveEdge = activeStackNodeIds.has(node.id) && activeStackNodeIds.has(node.parentId);
+                        const isCut = (node.choiceType === 'CUT');
+
+                        let stroke = isCut ? '#38bdf8' : '#c084fc';
+                        let strokeWidth = '1.5';
+                        let marker = isCut ? 'url(#arrow-cut)' : 'url(#arrow-merge)';
+
+                        if (isActiveEdge) {
+                            stroke = '#f59e0b';
+                            strokeWidth = '3';
+                            marker = 'url(#arrow-active)';
+                        }
+
+                        // Edge Midpoint Choice Tag
+                        const midX = (parentCoord.x + childCoord.x) / 2;
+                        const midY = (parentCoord.y + childCoord.y) / 2;
+
+                        edgesSvg += `
+                            <line x1="${parentCoord.x}" y1="${parentCoord.y + 15}" x2="${childCoord.x}" y2="${childCoord.y - 15}" 
+                                  stroke="${stroke}" stroke-width="${strokeWidth}" marker-end="${marker}" class="tree-edge" />
+                            
+                            <rect x="${midX - 22}" y="${midY - 9}" width="44" height="16" rx="4" 
+                                  fill="#090d16" stroke="${stroke}" stroke-width="1" />
+                            <text x="${midX}" y="${midY + 3}" text-anchor="middle" font-family="Fira Code, monospace" 
+                                  font-size="8" font-weight="bold" fill="${stroke}">
+                                ${isCut ? 'CUT (+)' : 'MERGE (+=)'}
+                            </text>
+                        `;
+                    }
+                }
+            });
+
+            // 2. Draw Nodes
+            let nodesSvg = '';
+            decisionTreeNodes.forEach(node => {
+                const coord = coords.get(node.id);
+                if (!coord) return;
+
+                const isActive = (step.nodeId === node.id);
+                const isPathActive = activeStackNodeIds.has(node.id);
+
+                let fill = '#0f172a';
+                let stroke = '#334155';
+                let textColor = '#cbd5e1';
+                let labelText = `[${node.path.map(x => '"' + x + '"').join(', ')}]`;
+                if (labelText.length > 18) labelText = labelText.substring(0, 16) + '...';
+
+                let badgeOverlay = '';
+
+                if (node.status === 'SOLUTION') {
+                    fill = '#064e3b';
+                    stroke = '#10b981';
+                    textColor = '#a7f3d0';
+                    badgeOverlay = `
+                        <circle cx="${coord.x + 36}" cy="${coord.y - 14}" r="8" fill="#10b981" />
+                        <text x="${coord.x + 36}" y="${coord.y - 11}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="bold" fill="#022c22">✓</text>
+                    `;
+                } else if (node.status === 'INVALID') {
+                    fill = '#450a0a';
+                    stroke = '#f43f5e';
+                    textColor = '#fecdd3';
+                    badgeOverlay = `
+                        <circle cx="${coord.x + 36}" cy="${coord.y - 14}" r="8" fill="#f43f5e" />
+                        <text x="${coord.x + 36}" y="${coord.y - 11}" text-anchor="middle" font-family="Inter, sans-serif" font-size="10" font-weight="bold" fill="#ffffff">✕</text>
+                    `;
+                }
+
+                if (isActive) {
+                    fill = '#b45309';
+                    stroke = '#f59e0b';
+                    textColor = '#ffffff';
+                } else if (isPathActive && node.status !== 'SOLUTION' && node.status !== 'INVALID') {
+                    stroke = '#f59e0b';
+                }
+
+                nodesSvg += `
+                    <g class="tree-node-group">
+                        <rect x="${coord.x - 38}" y="${coord.y - 16}" width="76" height="32" rx="8" 
+                              fill="${fill}" stroke="${stroke}" stroke-width="${isActive ? '2.5' : '1.5'}" />
+                        
+                        <text x="${coord.x}" y="${coord.y + 4}" text-anchor="middle" font-family="Fira Code, monospace" 
+                              font-size="9" font-weight="bold" fill="${textColor}">
+                            ${labelText}
+                        </text>
+
+                        ${badgeOverlay}
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = `
+                <defs>
+                    <marker id="arrow-cut" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#38bdf8" />
+                    </marker>
+                    <marker id="arrow-merge" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#c084fc" />
+                    </marker>
+                    <marker id="arrow-active" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                        <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+                    </marker>
+                </defs>
+                ${edgesSvg}
+                ${nodesSvg}
+            `;
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            const preset = PRESETS[presetIdx];
+            rawString = preset.s;
+
+            steps = generatePalindromeSteps(rawString);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const strInput = document.getElementById('inputString').value.trim().toLowerCase();
+                const errorBox = document.getElementById('modalError');
+
+                try {
+                    if (!strInput || strInput.length === 0) throw new Error('String cannot be empty!');
+                    if (strInput.length > 8) throw new Error('String length must be <= 8 for clean decision tree visualization!');
+
+                    rawString = strInput;
+
+                    steps = generatePalindromeSteps(rawString);
+                    document.getElementById('stepProgress').max = steps.length - 1;
+                    currentStepIndex = 0;
+
+                    renderStep(0);
+                    modal.classList.add('hidden');
+                } catch (err) {
+                    errorBox.innerText = err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initApp() {
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
