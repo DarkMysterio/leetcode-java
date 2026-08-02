@@ -1,0 +1,813 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Number of Islands (DFS + Visited Matrix) Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .grid-cell {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .pulse-amber {
+            animation: pulse-amber-glow 1.4s infinite;
+        }
+        @keyframes pulse-amber-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
+            50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.4s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.18);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950">
+                    <i class="fa-solid fa-water text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Number of Islands Visualizer
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">DFS + visited[][] Matrix</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">See how recursive DFS visits connected land cells without mutating the original grid</p>
+                </div>
+            </div>
+
+            <!-- Presets & Custom Input -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-80">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Standard 1 Island (4x5 Grid)</option>
+                        <option value="1">2. 3 Distinct Islands (4x5 Grid)</option>
+                        <option value="2">3. Diagonals / Isolated Cells (4x4 Grid)</option>
+                        <option value="3">4. Ring Island with Lake (4x4 Grid)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customModalBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-400 font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom Grid
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Controls Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Step Control Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Scrub Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1600">0.5x Speed</option>
+                        <option value="900" selected>1.0x Speed</option>
+                        <option value="450">2.0x Speed</option>
+                        <option value="200">3.5x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dual Grid View Workspace -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: Grid & Visited Matrices (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+
+                <!-- Side-by-Side Dual Grids -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+                    
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-table-cells text-cyan-400"></i> Dual Grid State Monitors
+                            </h2>
+                        </div>
+                        
+                        <!-- Islands Counter Badge -->
+                        <div class="flex items-center gap-2 bg-emerald-500/10 border border-emerald-500/30 px-3 py-1 rounded-xl">
+                            <span class="text-[11px] text-emerald-400 font-semibold uppercase">Islands Count:</span>
+                            <span id="islandsCountBadge" class="mono text-base font-bold text-emerald-300">0</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+                        
+                        <!-- Grid 1: Original Input Grid -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center gap-3">
+                            <div class="flex items-center justify-between w-full border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-map text-amber-400"></i> Input `grid`
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-mono">['1'=Land, '0'=Water]</span>
+                            </div>
+
+                            <div id="gridContainer" class="flex flex-col gap-1.5 my-auto">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                        <!-- Grid 2: Visited Boolean Matrix -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center gap-3">
+                            <div class="flex items-center justify-between w-full border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-cyan-300 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-square-check text-cyan-400"></i> `visited[][]` Matrix
+                                </span>
+                                <span class="text-[10px] text-slate-400 font-mono">[true / false]</span>
+                            </div>
+
+                            <div id="visitedContainer" class="flex flex-col gap-1.5 my-auto">
+                                <!-- Populated via JS -->
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 border-t border-slate-800/80 pt-3">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-amber-500 border border-amber-300"></span> Current Scan Pointer (i, j)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-cyan-500 border border-cyan-300"></span> Active DFS Call</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-emerald-500 border border-emerald-300"></span> Visited Land (visited = true)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded bg-slate-900 border border-slate-700"></span> Unvisited Water / Out of Bounds</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Narrative & Call Stack (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+
+                <!-- Code Trace Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Execution Code Trace
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">DFS Connected Component</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public int numIslands(char[][] grid) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6">boolean[][] visited = new boolean[rows][cols];</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-6">for (int i = 0; i &lt; rows; i++) {</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-10">for (int j = 0; j &lt; cols; j++) {</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-14 text-amber-300">if (grid[i][j] == '1' &amp;&amp; !visited[i][j]) {</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-18 text-emerald-400">count++; dfs(grid, visited, i, j);</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded pl-14">}</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded pl-10">}</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-6">} return count;</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded">}</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded text-sky-300">void dfs(grid, visited, i, j) {</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-6 text-rose-400">if (outOfBounds || grid[i][j] == '0' || visited[i][j]) return;</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-300">visited[i][j] = true; // Mark visited</div>
+                        <div id="code-line-14" class="code-line px-2 py-0.5 rounded pl-6">dfs(i + 1, j); dfs(i - 1, j); // Down, Up</div>
+                        <div id="code-line-15" class="code-line px-2 py-0.5 rounded pl-6">dfs(i, j + 1); dfs(i, j - 1); // Right, Left</div>
+                        <div id="code-line-16" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+
+                <!-- Explanation Narrative Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> What's Happening?</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[50px]">
+                        Click Play or Next to step through the grid scan and see how DFS marks cells in the visited matrix.
+                    </p>
+                </div>
+
+                <!-- Call Stack Visualizer -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-purple-400"></i> DFS Call Stack
+                        </h2>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </div>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[140px] overflow-y-auto pr-1">
+                        <!-- Stack items populated via JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-cyan-400"></i> Custom Grid Builder
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <p class="text-slate-400">Enter grid rows using '1' for land and '0' for water (e.g. 4 rows of 5 characters):</p>
+                <textarea id="customGridText" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">11000
+11000
+00100
+00011</textarea>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Error message
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Cancel</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-950">Apply Grid</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const PRESETS = [
+            {
+                name: "1. Standard 1 Island (4x5 Grid)",
+                grid: [
+                    ['1','1','1','1','0'],
+                    ['1','1','0','1','0'],
+                    ['1','1','0','0','0'],
+                    ['0','0','0','0','0']
+                ]
+            },
+            {
+                name: "2. 3 Distinct Islands (4x5 Grid)",
+                grid: [
+                    ['1','1','0','0','0'],
+                    ['1','1','0','0','0'],
+                    ['0','0','1','0','0'],
+                    ['0','0','0','1','1']
+                ]
+            },
+            {
+                name: "3. Diagonals / Isolated Cells (4x4 Grid)",
+                grid: [
+                    ['1','0','1','0'],
+                    ['0','1','0','1'],
+                    ['1','0','1','0'],
+                    ['0','1','0','1']
+                ]
+            },
+            {
+                name: "4. Ring Island with Lake (4x4 Grid)",
+                grid: [
+                    ['1','1','1','1'],
+                    ['1','0','0','1'],
+                    ['1','0','0','1'],
+                    ['1','1','1','1']
+                ]
+            }
+        ];
+
+        // State Variables
+        let currentGrid = [];
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 900;
+
+        function cloneVisited(v) {
+            return v.map(row => [...row]);
+        }
+
+        function generateNumIslandsSteps(grid) {
+            const stepsList = [];
+            const rows = grid.length;
+            const cols = grid[0].length;
+
+            const visited = Array.from({ length: rows }, () => Array(cols).fill(false));
+            let islandCount = 0;
+            const stack = [];
+
+            // Step 0: Start
+            stepsList.push({
+                type: 'START',
+                title: 'Start Number of Islands Scan',
+                desc: `Initialized grid (${rows}x${cols}) and boolean visited[][] matrix set to all false.`,
+                grid: grid,
+                visited: cloneVisited(visited),
+                scanPos: null,
+                activeDfsPos: null,
+                islandCount: 0,
+                stack: [],
+                codeLine: 2
+            });
+
+            for (let i = 0; i < rows; i++) {
+                for (let j = 0; j < cols; j++) {
+                    const isLand = (grid[i][j] === '1');
+                    const isVis = visited[i][j];
+
+                    stepsList.push({
+                        type: 'SCAN_CELL',
+                        title: `Inspect Cell (${i}, ${j})`,
+                        desc: `Outer loop scanning cell (${i}, ${j}): Val = '${grid[i][j]}', Visited = ${isVis}.`,
+                        grid: grid,
+                        visited: cloneVisited(visited),
+                        scanPos: { i, j },
+                        activeDfsPos: null,
+                        islandCount,
+                        stack: [],
+                        codeLine: 5
+                    });
+
+                    if (isLand && !isVis) {
+                        islandCount++;
+
+                        stepsList.push({
+                            type: 'NEW_ISLAND',
+                            title: `🎉 Found New Island #${islandCount} at (${i}, ${j})!`,
+                            desc: `Cell (${i}, ${j}) is unvisited land ('1')! Increment island counter to ${islandCount} and trigger DFS.`,
+                            grid: grid,
+                            visited: cloneVisited(visited),
+                            scanPos: { i, j },
+                            activeDfsPos: { i, j },
+                            islandCount,
+                            stack: [],
+                            codeLine: 6
+                        });
+
+                        // DFS Function Simulation
+                        function dfsTrace(r, c) {
+                            const callFrame = { i: r, j: c };
+                            stack.push(callFrame);
+
+                            // Check Base Case
+                            const isOut = (r < 0 || r >= rows || c < 0 || c >= cols);
+                            let isWater = false;
+                            let isAlreadyVis = false;
+
+                            if (!isOut) {
+                                isWater = (grid[r][c] === '0');
+                                isAlreadyVis = visited[r][c];
+                            }
+
+                            if (isOut || isWater || isAlreadyVis) {
+                                let reason = isOut ? 'Out of bounds' : isWater ? 'Water cell (\'0\')' : 'Already visited';
+                                stepsList.push({
+                                    type: 'DFS_BASE_CASE',
+                                    title: `DFS (${r}, ${c}) -> Stop (${reason})`,
+                                    desc: `dfs(${r}, ${c}) hit base case: ${reason}. Return immediately.`,
+                                    grid: grid,
+                                    visited: cloneVisited(visited),
+                                    scanPos: { i, j },
+                                    activeDfsPos: { i: r, j: c },
+                                    islandCount,
+                                    stack: [...stack],
+                                    codeLine: 12
+                                });
+                                stack.pop();
+                                return;
+                            }
+
+                            // Mark Visited
+                            visited[r][c] = true;
+
+                            stepsList.push({
+                                type: 'DFS_MARK_VISITED',
+                                title: `DFS (${r}, ${c}) -> Set visited[${r}][${c}] = true`,
+                                desc: `Marked cell (${r}, ${c}) as visited in the boolean matrix. Now exploring 4 directions...`,
+                                grid: grid,
+                                visited: cloneVisited(visited),
+                                scanPos: { i, j },
+                                activeDfsPos: { i: r, j: c },
+                                islandCount,
+                                stack: [...stack],
+                                codeLine: 13
+                            });
+
+                            // Recurse 4 directions
+                            const dirs = [
+                                { r: r + 1, c: c, label: 'Down' },
+                                { r: r - 1, c: c, label: 'Up' },
+                                { r: r, c: c + 1, label: 'Right' },
+                                { r: r, c: c - 1, label: 'Left' }
+                            ];
+
+                            dirs.forEach(d => {
+                                stepsList.push({
+                                    type: 'DFS_RECURSE',
+                                    title: `DFS (${r}, ${c}) -> Recurse ${d.label} to (${d.r}, ${d.c})`,
+                                    desc: `Calling dfs(${d.r}, ${d.c}) [${d.label}] from cell (${r}, ${c}).`,
+                                    grid: grid,
+                                    visited: cloneVisited(visited),
+                                    scanPos: { i, j },
+                                    activeDfsPos: { i: r, j: c },
+                                    islandCount,
+                                    stack: [...stack],
+                                    codeLine: d.label === 'Down' || d.label === 'Up' ? 14 : 15
+                                });
+                                dfsTrace(d.r, d.c);
+                            });
+
+                            stack.pop();
+                        }
+
+                        dfsTrace(i, j);
+                    }
+                }
+            }
+
+            // Finish Step
+            stepsList.push({
+                type: 'FINISH',
+                title: 'Grid Traversal Complete! 🎉',
+                desc: `Finished scanning all cells. Found a total of ${islandCount} distinct island(s).`,
+                grid: grid,
+                visited: cloneVisited(visited),
+                scanPos: null,
+                activeDfsPos: null,
+                islandCount,
+                stack: [],
+                codeLine: 9
+            });
+
+            return stepsList;
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Controls
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Text Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Islands Counter Badge
+            document.getElementById('islandsCountBadge').innerText = step.islandCount;
+
+            // Highlight Code Lines
+            for (let k = 1; k <= 16; k++) {
+                const line = document.getElementById(`code-line-${k}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((frame, depth) => `
+                    <div class="p-2 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-purple-950/40 border-purple-500/60 text-purple-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-purple-400' : 'bg-slate-600'}"></span>
+                            dfs(r:${frame.i}, c:${frame.j})
+                        </span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            depth: ${depth + 1}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Render Both Grid Displays
+            renderDualGrids(step);
+        }
+
+        function renderDualGrids(step) {
+            const gridContainer = document.getElementById('gridContainer');
+            const visitedContainer = document.getElementById('visitedContainer');
+
+            const rows = step.grid.length;
+            const cols = step.grid[0].length;
+
+            let gridHtml = '';
+            let visHtml = '';
+
+            for (let r = 0; r < rows; r++) {
+                gridHtml += `<div class="flex items-center gap-1.5">`;
+                visHtml += `<div class="flex items-center gap-1.5">`;
+
+                for (let c = 0; c < cols; c++) {
+                    const val = step.grid[r][c];
+                    const isVis = step.visited[r][c];
+
+                    const isScanPointer = (step.scanPos && step.scanPos.i === r && step.scanPos.j === c);
+                    const isActiveDfs = (step.activeDfsPos && step.activeDfsPos.i === r && step.activeDfsPos.j === c);
+
+                    // Grid cell styling
+                    let gridCardStyle = "bg-slate-900 border-slate-800 text-slate-400";
+                    if (val === '1') {
+                        gridCardStyle = "bg-amber-950/40 border-amber-500/40 text-amber-300 font-bold";
+                    } else {
+                        gridCardStyle = "bg-slate-950/80 border-slate-900 text-slate-600";
+                    }
+
+                    if (isActiveDfs) {
+                        gridCardStyle = "bg-cyan-500/30 border-2 border-cyan-400 text-cyan-200 pulse-amber scale-105 shadow-lg shadow-cyan-950 z-10";
+                    } else if (isScanPointer) {
+                        gridCardStyle = "bg-amber-500/20 border-2 border-amber-400 text-amber-300 scale-105 z-10";
+                    }
+
+                    // Visited cell styling
+                    let visCardStyle = "bg-slate-950/80 border-slate-900 text-slate-600";
+                    if (isVis) {
+                        visCardStyle = "bg-emerald-500/20 border-2 border-emerald-400 text-emerald-300 font-bold";
+                    }
+
+                    if (isActiveDfs) {
+                        visCardStyle = "bg-cyan-500/30 border-2 border-cyan-400 text-cyan-200 pulse-amber scale-105 shadow-lg shadow-cyan-950 z-10";
+                    }
+
+                    gridHtml += `
+                        <div class="grid-cell w-10 h-10 rounded-xl border flex items-center justify-center mono text-xs ${gridCardStyle}">
+                            ${val === '1' ? '🏝️' : '🌊'}
+                        </div>
+                    `;
+
+                    visHtml += `
+                        <div class="grid-cell w-10 h-10 rounded-xl border flex items-center justify-center mono text-[10px] ${visCardStyle}">
+                            ${isVis ? 'true' : 'false'}
+                        </div>
+                    `;
+                }
+
+                gridHtml += `</div>`;
+                visHtml += `</div>`;
+            }
+
+            gridContainer.innerHTML = gridHtml;
+            visitedContainer.innerHTML = visHtml;
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            const preset = PRESETS[presetIdx];
+            currentGrid = preset.grid.map(row => [...row]);
+
+            steps = generateNumIslandsSteps(currentGrid);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const text = document.getElementById('customGridText').value.trim();
+                const errorBox = document.getElementById('modalError');
+
+                try {
+                    const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    if (lines.length === 0) throw new Error('Grid cannot be empty!');
+
+                    const cols = lines[0].length;
+                    const parsedGrid = [];
+
+                    for (let l of lines) {
+                        if (l.length !== cols) throw new Error('All grid rows must have equal length!');
+                        if (!/^[01]+$/.test(l)) throw new Error('Grid must contain only \'0\' and \'1\' characters!');
+                        parsedGrid.push(l.split(''));
+                    }
+
+                    if (parsedGrid.length > 6 || cols > 6) throw new Error('Grid dimensions must be <= 6x6 to fit cleanly on screen!');
+
+                    currentGrid = parsedGrid;
+
+                    steps = generateNumIslandsSteps(currentGrid);
+                    document.getElementById('stepProgress').max = steps.length - 1;
+                    currentStepIndex = 0;
+
+                    renderStep(0);
+                    modal.classList.add('hidden');
+                } catch (err) {
+                    errorBox.innerText = err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initApp() {
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
