@@ -1,0 +1,1601 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Graph Data Structures — Technical Interview Visual Guide</title>
+<style>
+  :root{
+    --navy:#0f172a;
+    --ink:#1e293b;
+    --muted:#64748b;
+    --blue:#0284c7;
+    --blue-2:#0ea5e9;
+    --blue-soft:#e0f2fe;
+    --slate:#f8fafc;
+    --line:#cbd5e1;
+    --card:#ffffff;
+    --orange:#f97316;
+    --orange-soft:#ffedd5;
+    --green:#16a34a;
+    --green-soft:#dcfce7;
+    --red:#dc2626;
+    --red-soft:#fee2e2;
+    --violet:#7c3aed;
+    --violet-soft:#ede9fe;
+    --shadow:0 7px 20px rgba(15,23,42,.08);
+  }
+
+  @page{
+    size:A4;
+    margin:12mm 10mm;
+  }
+
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0;
+    background:var(--slate);
+    color:var(--ink);
+    font-family:Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif;
+    font-size:10.5pt;
+    line-height:1.48;
+  }
+
+  main{
+    max-width:1050px;
+    margin:0 auto;
+    padding:24px;
+  }
+
+  .hero{
+    background:linear-gradient(135deg,var(--navy),#172554 65%,#075985);
+    color:white;
+    border-radius:20px;
+    padding:34px 36px;
+    box-shadow:var(--shadow);
+    position:relative;
+    overflow:hidden;
+    margin-bottom:20px;
+  }
+  .hero:after{
+    content:"";
+    position:absolute;
+    width:260px;
+    height:260px;
+    border:1px solid rgba(255,255,255,.18);
+    border-radius:50%;
+    right:-70px;
+    top:-105px;
+    box-shadow:0 0 0 38px rgba(255,255,255,.035),0 0 0 78px rgba(255,255,255,.025);
+  }
+  .eyebrow{
+    text-transform:uppercase;
+    letter-spacing:.14em;
+    font-weight:800;
+    font-size:8.5pt;
+    color:#bae6fd;
+    margin-bottom:8px;
+  }
+  h1{
+    font-size:28pt;
+    line-height:1.08;
+    margin:0 0 10px;
+    max-width:760px;
+  }
+  .hero p{max-width:820px;margin:0;color:#e2e8f0;font-size:11pt}
+  .meta{
+    display:flex;
+    gap:10px;
+    flex-wrap:wrap;
+    margin-top:18px;
+  }
+  .pill{
+    display:inline-flex;
+    align-items:center;
+    gap:7px;
+    border-radius:999px;
+    padding:6px 10px;
+    background:rgba(255,255,255,.11);
+    border:1px solid rgba(255,255,255,.18);
+    font-size:8.5pt;
+    font-weight:700;
+  }
+
+  .toc, .section-intro, .card, .table-card, .algorithm, .cheat{
+    background:var(--card);
+    border:1px solid #e2e8f0;
+    border-radius:16px;
+    box-shadow:var(--shadow);
+  }
+  .toc{padding:18px 20px;margin:0 0 26px}
+  .toc h2{margin-top:0}
+  .toc-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:8px 18px;
+  }
+  .toc a{
+    color:var(--ink);
+    text-decoration:none;
+    font-size:9.2pt;
+    border-bottom:1px dotted var(--line);
+    padding:5px 0;
+  }
+  .toc a span{color:var(--blue);font-weight:800;margin-right:6px}
+
+  section{margin:28px 0}
+  .section-title{
+    display:flex;
+    align-items:flex-end;
+    justify-content:space-between;
+    gap:18px;
+    margin:0 0 12px;
+    padding-bottom:9px;
+    border-bottom:3px solid var(--navy);
+  }
+  .section-title h2{
+    margin:0;
+    color:var(--navy);
+    font-size:20pt;
+    line-height:1.15;
+  }
+  .section-title .kicker{
+    color:var(--blue);
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.08em;
+    font-size:8pt;
+    white-space:nowrap;
+  }
+  .lead{
+    margin:0 0 16px;
+    color:#475569;
+    font-size:10.5pt;
+  }
+
+  .formula{
+    display:inline-block;
+    background:#f1f5f9;
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:2px 7px;
+    font-family:"SFMono-Regular",Consolas,monospace;
+    font-size:9pt;
+    font-weight:700;
+  }
+
+  .grid-2,.grid-3{
+    display:grid;
+    gap:16px;
+    align-items:stretch;
+  }
+  .grid-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .grid-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+
+  .card{
+    padding:15px;
+    break-inside:avoid;
+    page-break-inside:avoid;
+    display:flex;
+    flex-direction:column;
+  }
+  .card h3{
+    color:var(--navy);
+    margin:0;
+    font-size:13pt;
+  }
+  .subhead{
+    color:var(--muted);
+    font-size:8.5pt;
+    margin:2px 0 10px;
+  }
+  .diagram{
+    border:1px solid #dbeafe;
+    background:linear-gradient(180deg,#f8fdff,#f8fafc);
+    border-radius:12px;
+    padding:8px;
+    margin:0 0 11px;
+  }
+  svg{
+    display:block;
+    width:100%;
+    height:auto;
+  }
+  .card p{margin:0 0 8px}
+  .props{
+    margin:2px 0 10px;
+    padding-left:18px;
+  }
+  .props li{margin:3px 0}
+  .trigger{
+    margin-top:auto;
+    background:var(--blue-soft);
+    border-left:4px solid var(--blue);
+    border-radius:8px;
+    padding:9px 10px;
+    font-size:8.8pt;
+  }
+  .trigger strong{
+    display:block;
+    color:#075985;
+    margin-bottom:2px;
+    text-transform:uppercase;
+    letter-spacing:.04em;
+    font-size:7.7pt;
+  }
+  .trigger.orange{background:var(--orange-soft);border-left-color:var(--orange)}
+  .trigger.orange strong{color:#9a3412}
+  .trigger.green{background:var(--green-soft);border-left-color:var(--green)}
+  .trigger.green strong{color:#166534}
+  .trigger.red{background:var(--red-soft);border-left-color:var(--red)}
+  .trigger.red strong{color:#991b1b}
+  .trigger.violet{background:var(--violet-soft);border-left-color:var(--violet)}
+  .trigger.violet strong{color:#5b21b6}
+
+  .node{fill:var(--ink);stroke:white;stroke-width:2}
+  .node-blue{fill:var(--blue);stroke:white;stroke-width:2}
+  .node-orange{fill:var(--orange);stroke:white;stroke-width:2}
+  .node-green{fill:var(--green);stroke:white;stroke-width:2}
+  .node-violet{fill:var(--violet);stroke:white;stroke-width:2}
+  .edge{stroke:var(--blue);stroke-width:3;fill:none;stroke-linecap:round}
+  .edge-muted{stroke:#94a3b8;stroke-width:2.3;fill:none;stroke-linecap:round}
+  .edge-hot{stroke:var(--orange);stroke-width:4;fill:none;stroke-linecap:round}
+  .edge-green{stroke:var(--green);stroke-width:4;fill:none;stroke-linecap:round}
+  .dash{stroke-dasharray:7 6}
+  .label{
+    fill:white;
+    font-size:12px;
+    font-weight:800;
+    text-anchor:middle;
+    dominant-baseline:middle;
+    font-family:Inter,Arial,sans-serif;
+  }
+  .svg-note{
+    fill:#475569;
+    font-size:10px;
+    font-weight:700;
+    font-family:Inter,Arial,sans-serif;
+  }
+  .weight{
+    fill:var(--navy);
+    font-size:11px;
+    font-weight:900;
+    text-anchor:middle;
+    paint-order:stroke;
+    stroke:white;
+    stroke-width:4px;
+    stroke-linejoin:round;
+    font-family:Inter,Arial,sans-serif;
+  }
+  .set-label{
+    fill:#475569;
+    font-size:10px;
+    font-weight:800;
+    text-transform:uppercase;
+    letter-spacing:.06em;
+    font-family:Inter,Arial,sans-serif;
+  }
+
+  .table-card{overflow:hidden;break-inside:avoid;margin-top:14px}
+  table{width:100%;border-collapse:collapse;font-size:9pt}
+  thead th{
+    background:var(--navy);
+    color:white;
+    text-align:left;
+    padding:9px 10px;
+    font-weight:800;
+  }
+  tbody td{
+    border-bottom:1px solid #e2e8f0;
+    padding:8px 10px;
+    vertical-align:top;
+  }
+  tbody tr:nth-child(even){background:#f8fafc}
+  tbody tr:last-child td{border-bottom:none}
+  td strong{color:var(--navy)}
+
+  .algorithm{
+    padding:17px;
+    break-inside:avoid;
+    margin-bottom:16px;
+  }
+  .algorithm-head{
+    display:flex;
+    justify-content:space-between;
+    gap:14px;
+    align-items:flex-start;
+    margin-bottom:10px;
+  }
+  .algorithm h3{margin:0;color:var(--navy);font-size:14pt}
+  .complexity{
+    background:#f1f5f9;
+    border:1px solid var(--line);
+    border-radius:999px;
+    padding:5px 9px;
+    font-size:8pt;
+    font-weight:800;
+    white-space:nowrap;
+  }
+  .steps{
+    counter-reset:step;
+    margin:9px 0 10px;
+    padding:0;
+    list-style:none;
+  }
+  .steps li{
+    counter-increment:step;
+    position:relative;
+    padding:5px 0 5px 32px;
+  }
+  .steps li:before{
+    content:counter(step);
+    position:absolute;
+    left:0;
+    top:4px;
+    width:22px;
+    height:22px;
+    border-radius:50%;
+    display:grid;
+    place-items:center;
+    background:var(--navy);
+    color:white;
+    font-size:8pt;
+    font-weight:900;
+  }
+
+  .code{
+    background:#0b1220;
+    color:#e2e8f0;
+    border-radius:12px;
+    padding:12px 14px;
+    font-family:"SFMono-Regular",Consolas,monospace;
+    font-size:8.2pt;
+    line-height:1.5;
+    overflow:auto;
+    white-space:pre;
+  }
+  .code .kw{color:#7dd3fc}
+  .code .cm{color:#94a3b8}
+
+  .callout{
+    border:1px solid #bae6fd;
+    background:#f0f9ff;
+    border-radius:12px;
+    padding:12px 14px;
+    margin:12px 0;
+    break-inside:avoid;
+  }
+  .callout strong{color:#075985}
+  .warning{
+    border-color:#fecaca;
+    background:#fff7f7;
+  }
+  .warning strong{color:#991b1b}
+
+  .decision{
+    display:grid;
+    grid-template-columns:repeat(4,minmax(0,1fr));
+    gap:10px;
+  }
+  .decision > div{
+    border:1px solid #dbeafe;
+    border-radius:12px;
+    padding:10px;
+    background:white;
+    break-inside:avoid;
+  }
+  .decision b{color:var(--blue);display:block;font-size:9.5pt}
+  .decision span{font-size:8.5pt;color:#475569}
+
+  .cheat{
+    padding:18px;
+    border-top:5px solid var(--blue);
+  }
+  .cheat h2{margin-top:0;color:var(--navy)}
+  .cheat-grid{
+    display:grid;
+    grid-template-columns:repeat(3,minmax(0,1fr));
+    gap:10px;
+  }
+  .cheat-item{
+    border:1px solid #e2e8f0;
+    border-radius:10px;
+    padding:10px;
+    background:#f8fafc;
+  }
+  .cheat-item strong{display:block;color:var(--navy);margin-bottom:2px}
+  .cheat-item span{font-size:8.5pt;color:#475569}
+
+  footer{
+    margin-top:24px;
+    color:var(--muted);
+    font-size:8pt;
+    text-align:center;
+  }
+
+  .page-break{break-before:page;page-break-before:always}
+
+  @media(max-width:820px){
+    main{padding:14px}
+    .grid-2,.grid-3,.toc-grid,.cheat-grid,.decision{grid-template-columns:1fr}
+    h1{font-size:22pt}
+    .hero{padding:26px 22px}
+    .section-title{display:block}
+    .section-title .kicker{display:block;margin-top:5px}
+  }
+
+  @media print{
+    body{background:white;font-size:9.4pt}
+    main{max-width:none;padding:0}
+    .hero,.toc,.card,.table-card,.algorithm,.cheat{box-shadow:none}
+    .hero{border-radius:0;margin-bottom:12mm}
+    .card,.algorithm,.table-card,.cheat{break-inside:avoid;page-break-inside:avoid}
+    a{color:inherit;text-decoration:none}
+    .toc a{border-bottom:none}
+    .diagram{background:white}
+  }
+</style>
+</head>
+<body>
+<main>
+  <header class="hero">
+    <div class="eyebrow">Senior Software Engineering Interview Guide</div>
+    <h1>Graph Data Structures: A Visual, FAANG-Oriented Reference</h1>
+    <p>A compact but rigorous guide to graph types, representations, traversals, shortest paths, spanning trees, and cycle detection—built entirely with print-safe HTML, CSS, and inline SVG.</p>
+    <div class="meta">
+      <span class="pill">Last updated: 23 July 2026</span>
+      <span class="pill">A4 print layout</span>
+      <span class="pill">No external dependencies</span>
+      <span class="pill">Inline vector diagrams</span>
+    </div>
+  </header>
+
+  <nav class="toc">
+    <h2>Table of Contents</h2>
+    <div class="toc-grid">
+      <a href="#fundamentals"><span>01</span>Graph Fundamentals</a>
+      <a href="#direction"><span>02</span>Directed vs Undirected</a>
+      <a href="#weights"><span>03</span>Weighted vs Unweighted</a>
+      <a href="#connectivity"><span>04</span>Connectivity</a>
+      <a href="#cycles"><span>05</span>Cycles and DAGs</a>
+      <a href="#structure"><span>06</span>Complete, Bipartite, Tree</a>
+      <a href="#density"><span>07</span>Dense vs Sparse</a>
+      <a href="#representations"><span>08</span>Graph Representations</a>
+      <a href="#traversal"><span>09</span>DFS and BFS</a>
+      <a href="#shortest-path"><span>10</span>Shortest Paths</a>
+      <a href="#spanning"><span>11</span>Spanning Trees and MST</a>
+      <a href="#cycle-detection"><span>12</span>Directed Cycle Detection</a>
+    </div>
+  </nav>
+
+  <section id="fundamentals">
+    <div class="section-title">
+      <h2>1. Graph Fundamentals</h2>
+      <span class="kicker">The mental model</span>
+    </div>
+    <p class="lead">A graph is a non-linear data structure <span class="formula">G = (V, E)</span>, where <strong>V</strong> is the set of vertices and <strong>E</strong> is the set of edges connecting them. Graphs model relationships: networks, maps, dependencies, social connections, state transitions, and routing.</p>
+
+    <div class="card">
+      <h3>Core Graph Anatomy</h3>
+      <div class="subhead">Vertices, edges, paths, degree, and reachability</div>
+      <div class="diagram">
+        <svg viewBox="0 0 700 220" role="img" aria-label="Graph anatomy diagram">
+          <defs>
+            <marker id="arrow-anatomy" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#0284c7"/>
+            </marker>
+          </defs>
+          <path class="edge" d="M120 110 L260 55"/>
+          <path class="edge" d="M120 110 L265 170"/>
+          <path class="edge" d="M260 55 L445 65"/>
+          <path class="edge" d="M265 170 L445 65"/>
+          <path class="edge" d="M265 170 L500 165"/>
+          <circle class="node" cx="120" cy="110" r="23"/><text class="label" x="120" y="110">A</text>
+          <circle class="node" cx="260" cy="55" r="23"/><text class="label" x="260" y="55">B</text>
+          <circle class="node" cx="265" cy="170" r="23"/><text class="label" x="265" y="170">C</text>
+          <circle class="node" cx="445" cy="65" r="23"/><text class="label" x="445" y="65">D</text>
+          <circle class="node" cx="500" cy="165" r="23"/><text class="label" x="500" y="165">E</text>
+          <path d="M548 55 C610 40,640 52,660 84" class="edge-muted" marker-end="url(#arrow-anatomy)"/>
+          <text class="svg-note" x="555" y="34">edge = relationship</text>
+          <path d="M95 50 C75 30,50 35,40 70" class="edge-muted" marker-end="url(#arrow-anatomy)"/>
+          <text class="svg-note" x="20" y="25">vertex = entity</text>
+          <text class="svg-note" x="335" y="194">Path example: A → C → E</text>
+        </svg>
+      </div>
+      <ul class="props">
+        <li><strong>Path:</strong> a sequence of adjacent vertices.</li>
+        <li><strong>Reachability:</strong> whether one vertex can be reached from another.</li>
+        <li><strong>Degree:</strong> number of incident edges; in directed graphs, distinguish in-degree and out-degree.</li>
+      </ul>
+      <div class="trigger">
+        <strong>FAANG Interview Trigger</strong>
+        Whenever the problem describes entities plus relationships—cities and roads, courses and prerequisites, users and friendships, transformations, states, or dependencies—translate it into vertices and edges before choosing an algorithm.
+      </div>
+    </div>
+  </section>
+
+  <section id="direction">
+    <div class="section-title">
+      <h2>2. Based on Edge Direction</h2>
+      <span class="kicker">One-way vs two-way relationships</span>
+    </div>
+    <div class="grid-2">
+      <article class="card">
+        <h3>Directed Graph (Digraph)</h3>
+        <div class="subhead">Edges are ordered pairs: (u, v)</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Directed graph">
+            <defs>
+              <marker id="arrow-directed" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#0284c7"/>
+              </marker>
+            </defs>
+            <path class="edge" d="M85 110 L158 57" marker-end="url(#arrow-directed)"/>
+            <path class="edge" d="M185 61 L270 105" marker-end="url(#arrow-directed)"/>
+            <path class="edge" d="M270 128 L185 169" marker-end="url(#arrow-directed)"/>
+            <path class="edge" d="M158 166 L90 127" marker-end="url(#arrow-directed)"/>
+            <circle class="node" cx="70" cy="120" r="22"/><text class="label" x="70" y="120">A</text>
+            <circle class="node" cx="175" cy="48" r="22"/><text class="label" x="175" y="48">B</text>
+            <circle class="node" cx="290" cy="118" r="22"/><text class="label" x="290" y="118">C</text>
+            <circle class="node" cx="170" cy="178" r="22"/><text class="label" x="170" y="178">D</text>
+          </svg>
+        </div>
+        <p>Each edge has a specific direction. Traversal is allowed only in the arrow direction unless a reverse edge is explicitly present.</p>
+        <ul class="props">
+          <li>Models one-way roads, follows, task dependencies, and state transitions.</li>
+          <li><span class="formula">(u,v) ≠ (v,u)</span></li>
+        </ul>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Recognize directed graphs in prerequisite scheduling, dependency resolution, alien dictionaries, build systems, web links, and workflow/state-machine problems.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Undirected Graph</h3>
+        <div class="subhead">Edges are unordered pairs: {u, v}</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Undirected graph">
+            <path class="edge" d="M70 120 L175 48"/>
+            <path class="edge" d="M175 48 L290 118"/>
+            <path class="edge" d="M290 118 L170 178"/>
+            <path class="edge" d="M170 178 L70 120"/>
+            <path class="edge" d="M175 48 L170 178"/>
+            <circle class="node" cx="70" cy="120" r="22"/><text class="label" x="70" y="120">A</text>
+            <circle class="node" cx="175" cy="48" r="22"/><text class="label" x="175" y="48">B</text>
+            <circle class="node" cx="290" cy="118" r="22"/><text class="label" x="290" y="118">C</text>
+            <circle class="node" cx="170" cy="178" r="22"/><text class="label" x="170" y="178">D</text>
+          </svg>
+        </div>
+        <p>Edges have no direction. A connection can be traversed in both directions.</p>
+        <ul class="props">
+          <li>Models friendships, physical cables, and two-way roads.</li>
+          <li><span class="formula">{u,v} = {v,u}</span></li>
+        </ul>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Use when relationships are symmetric. Typical tasks include connected components, network connectivity, clone graph, union-find, and minimum spanning trees.
+        </div>
+      </article>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Feature</th><th>Directed Graph</th><th>Undirected Graph</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Edge direction</strong></td><td>Has a direction</td><td>No direction</td></tr>
+          <tr><td><strong>Representation</strong></td><td>Ordered pair (u, v)</td><td>Unordered pair {u, v}</td></tr>
+          <tr><td><strong>Traversal</strong></td><td>Only in the edge direction</td><td>Both directions</td></tr>
+          <tr><td><strong>Relationship</strong></td><td>One-way</td><td>Two-way</td></tr>
+          <tr><td><strong>Examples</strong></td><td>One-way roads, task dependencies</td><td>Friendships, two-way roads</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="weights">
+    <div class="section-title">
+      <h2>3. Based on Edge Weights</h2>
+      <span class="kicker">Cost-aware vs hop-aware</span>
+    </div>
+    <div class="grid-2">
+      <article class="card">
+        <h3>Weighted Graph</h3>
+        <div class="subhead">Each edge carries a cost, distance, time, or capacity</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Weighted graph">
+            <path class="edge" d="M65 145 L170 55"/><text class="weight" x="112" y="92">4</text>
+            <path class="edge" d="M170 55 L295 130"/><text class="weight" x="237" y="80">7</text>
+            <path class="edge" d="M65 145 L295 130"/><text class="weight" x="180" y="129">12</text>
+            <path class="edge" d="M170 55 L180 175"/><text class="weight" x="188" y="116">2</text>
+            <path class="edge" d="M180 175 L295 130"/><text class="weight" x="238" y="166">3</text>
+            <circle class="node" cx="55" cy="150" r="22"/><text class="label" x="55" y="150">A</text>
+            <circle class="node" cx="170" cy="45" r="22"/><text class="label" x="170" y="45">B</text>
+            <circle class="node" cx="305" cy="130" r="22"/><text class="label" x="305" y="130">C</text>
+            <circle class="node" cx="180" cy="180" r="22"/><text class="label" x="180" y="180">D</text>
+          </svg>
+        </div>
+        <p>The best path is based on the sum of edge weights—not necessarily the fewest edges.</p>
+        <ul class="props">
+          <li>Non-negative weights → Dijkstra.</li>
+          <li>Negative weights → Bellman–Ford.</li>
+          <li>All-pairs shortest paths → Floyd–Warshall.</li>
+        </ul>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          The moment a problem mentions cost, latency, distance, effort, exchange rate, or risk, inspect weight constraints before selecting the shortest-path algorithm.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Unweighted Graph</h3>
+        <div class="subhead">Every edge has equal implicit cost: 1</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Unweighted graph">
+            <path class="edge" d="M55 130 L145 55"/>
+            <path class="edge" d="M145 55 L275 65"/>
+            <path class="edge" d="M55 130 L165 170"/>
+            <path class="edge" d="M165 170 L295 135"/>
+            <path class="edge" d="M275 65 L295 135"/>
+            <circle class="node" cx="45" cy="135" r="22"/><text class="label" x="45" y="135">A</text>
+            <circle class="node" cx="145" cy="45" r="22"/><text class="label" x="145" y="45">B</text>
+            <circle class="node" cx="285" cy="65" r="22"/><text class="label" x="285" y="65">C</text>
+            <circle class="node" cx="165" cy="175" r="22"/><text class="label" x="165" y="175">D</text>
+            <circle class="node" cx="305" cy="140" r="22"/><text class="label" x="305" y="140">E</text>
+          </svg>
+        </div>
+        <p>All edges are treated equally. Shortest path means the minimum number of edges.</p>
+        <ul class="props">
+          <li>BFS discovers vertices in increasing hop count.</li>
+          <li>The first arrival at a vertex is shortest.</li>
+        </ul>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Use BFS for minimum moves, word transformations, grid steps, lock combinations, and any problem where every move has the same cost.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="connectivity">
+    <div class="section-title">
+      <h2>4. Based on Connectivity</h2>
+      <span class="kicker">Reachability across the graph</span>
+    </div>
+    <div class="grid-2">
+      <article class="card">
+        <h3>Connected Graph</h3>
+        <div class="subhead">A path exists between every pair of vertices</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Connected graph">
+            <path class="edge" d="M60 110 L150 45"/>
+            <path class="edge" d="M150 45 L270 85"/>
+            <path class="edge" d="M60 110 L145 175"/>
+            <path class="edge" d="M145 175 L285 155"/>
+            <path class="edge" d="M270 85 L285 155"/>
+            <path class="edge" d="M150 45 L145 175"/>
+            <circle class="node" cx="50" cy="115" r="22"/><text class="label" x="50" y="115">A</text>
+            <circle class="node" cx="150" cy="38" r="22"/><text class="label" x="150" y="38">B</text>
+            <circle class="node" cx="280" cy="85" r="22"/><text class="label" x="280" y="85">C</text>
+            <circle class="node" cx="145" cy="180" r="22"/><text class="label" x="145" y="180">D</text>
+            <circle class="node" cx="295" cy="155" r="22"/><text class="label" x="295" y="155">E</text>
+          </svg>
+        </div>
+        <p>Starting from any vertex, a traversal can eventually visit every vertex.</p>
+        <ul class="props">
+          <li>One DFS/BFS from any node visits all <span class="formula">V</span>.</li>
+          <li>A connected undirected graph has exactly one connected component.</li>
+        </ul>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Interviewers may ask you to verify connectivity before running Prim’s algorithm, or to count the operations needed to connect an entire network.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Disconnected Graph</h3>
+        <div class="subhead">The graph contains two or more components</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Disconnected graph">
+            <path class="edge" d="M45 95 L115 45"/>
+            <path class="edge" d="M45 95 L120 155"/>
+            <path class="edge" d="M115 45 L120 155"/>
+            <path class="edge" d="M245 65 L310 120"/>
+            <circle class="node" cx="40" cy="100" r="22"/><text class="label" x="40" y="100">A</text>
+            <circle class="node" cx="120" cy="40" r="22"/><text class="label" x="120" y="40">B</text>
+            <circle class="node" cx="120" cy="160" r="22"/><text class="label" x="120" y="160">C</text>
+            <circle class="node" cx="240" cy="60" r="22"/><text class="label" x="240" y="60">D</text>
+            <circle class="node" cx="315" cy="125" r="22"/><text class="label" x="315" y="125">E</text>
+            <circle class="node" cx="270" cy="175" r="22"/><text class="label" x="270" y="175">F</text>
+            <text class="svg-note" x="52" y="198">Component 1</text>
+            <text class="svg-note" x="250" y="198">Components 2–3</text>
+          </svg>
+        </div>
+        <p>Some vertices are unreachable from others. A traversal must be restarted from every still-unvisited vertex.</p>
+        <ul class="props">
+          <li>Outer loop over all vertices + DFS/BFS finds every component.</li>
+          <li>Isolated vertices are valid one-node components.</li>
+        </ul>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          Use multi-source BFS when all sources begin simultaneously; use an outer traversal loop for islands, provinces, components, disconnected grids, and forest problems.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="cycles">
+    <div class="section-title">
+      <h2>5. Cycles, Acyclic Graphs, and DAGs</h2>
+      <span class="kicker">Revisiting a start vertex</span>
+    </div>
+
+    <div class="grid-3">
+      <article class="card">
+        <h3>Cyclic Graph</h3>
+        <div class="subhead">Contains at least one cycle</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 210" role="img" aria-label="Cyclic graph">
+            <path class="edge-hot" d="M55 145 L145 42"/>
+            <path class="edge-hot" d="M145 42 L250 145"/>
+            <path class="edge-hot" d="M250 145 L55 145"/>
+            <circle class="node" cx="55" cy="150" r="22"/><text class="label" x="55" y="150">A</text>
+            <circle class="node" cx="145" cy="35" r="22"/><text class="label" x="145" y="35">B</text>
+            <circle class="node" cx="255" cy="150" r="22"/><text class="label" x="255" y="150">C</text>
+            <text class="svg-note" x="96" y="187">A → B → C → A</text>
+          </svg>
+        </div>
+        <p>A cycle starts and ends at the same vertex, without repeating intermediate vertices or edges.</p>
+        <div class="trigger red">
+          <strong>FAANG Interview Trigger</strong>
+          Look for deadlocks, circular dependencies, duplicate work, infinite traversal, and whether a graph can be a tree.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Acyclic Graph</h3>
+        <div class="subhead">Contains no cycles</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 210" role="img" aria-label="Acyclic graph">
+            <path class="edge" d="M150 35 L80 95"/>
+            <path class="edge" d="M150 35 L220 95"/>
+            <path class="edge" d="M80 95 L45 165"/>
+            <path class="edge" d="M80 95 L120 165"/>
+            <path class="edge" d="M220 95 L245 165"/>
+            <circle class="node" cx="150" cy="30" r="21"/><text class="label" x="150" y="30">A</text>
+            <circle class="node" cx="80" cy="95" r="21"/><text class="label" x="80" y="95">B</text>
+            <circle class="node" cx="220" cy="95" r="21"/><text class="label" x="220" y="95">C</text>
+            <circle class="node" cx="45" cy="170" r="21"/><text class="label" x="45" y="170">D</text>
+            <circle class="node" cx="120" cy="170" r="21"/><text class="label" x="120" y="170">E</text>
+            <circle class="node" cx="245" cy="170" r="21"/><text class="label" x="245" y="170">F</text>
+          </svg>
+        </div>
+        <p>No path can return to its start through distinct edges. An undirected connected acyclic graph is a tree.</p>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Acyclic structure enables simpler dynamic programming, unique parent relationships, and V−1 edge checks.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Directed Acyclic Graph (DAG)</h3>
+        <div class="subhead">Directed edges, no directed cycle</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 210" role="img" aria-label="Directed acyclic graph">
+            <defs>
+              <marker id="arrow-dag" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L9,3 z" fill="#0284c7"/>
+              </marker>
+            </defs>
+            <path class="edge" d="M55 55 L135 45" marker-end="url(#arrow-dag)"/>
+            <path class="edge" d="M155 55 L235 92" marker-end="url(#arrow-dag)"/>
+            <path class="edge" d="M55 70 L130 145" marker-end="url(#arrow-dag)"/>
+            <path class="edge" d="M150 145 L235 108" marker-end="url(#arrow-dag)"/>
+            <path class="edge" d="M250 115 L255 165" marker-end="url(#arrow-dag)"/>
+            <circle class="node" cx="40" cy="60" r="21"/><text class="label" x="40" y="60">A</text>
+            <circle class="node" cx="150" cy="45" r="21"/><text class="label" x="150" y="45">B</text>
+            <circle class="node" cx="250" cy="100" r="21"/><text class="label" x="250" y="100">C</text>
+            <circle class="node" cx="140" cy="155" r="21"/><text class="label" x="140" y="155">D</text>
+            <circle class="node" cx="255" cy="180" r="21"/><text class="label" x="255" y="180">E</text>
+          </svg>
+        </div>
+        <p>A directed graph with no directed cycles. At least one topological ordering exists.</p>
+        <div class="trigger violet">
+          <strong>FAANG Interview Trigger</strong>
+          Use DAG + topological sort for course schedules, build order, dependency execution, spreadsheet formulas, and dynamic programming over ordered states.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="structure">
+    <div class="section-title">
+      <h2>6. Structural Graph Families</h2>
+      <span class="kicker">Recognizable invariants</span>
+    </div>
+
+    <div class="grid-3">
+      <article class="card">
+        <h3>Complete Graph</h3>
+        <div class="subhead">Every pair of distinct vertices is adjacent</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 220" role="img" aria-label="Complete graph">
+            <path class="edge" d="M150 30 L45 95"/>
+            <path class="edge" d="M150 30 L255 95"/>
+            <path class="edge" d="M150 30 L215 190"/>
+            <path class="edge" d="M150 30 L85 190"/>
+            <path class="edge" d="M45 95 L255 95"/>
+            <path class="edge" d="M45 95 L215 190"/>
+            <path class="edge" d="M45 95 L85 190"/>
+            <path class="edge" d="M255 95 L215 190"/>
+            <path class="edge" d="M255 95 L85 190"/>
+            <path class="edge" d="M85 190 L215 190"/>
+            <circle class="node" cx="150" cy="28" r="20"/><text class="label" x="150" y="28">A</text>
+            <circle class="node" cx="40" cy="95" r="20"/><text class="label" x="40" y="95">B</text>
+            <circle class="node" cx="260" cy="95" r="20"/><text class="label" x="260" y="95">C</text>
+            <circle class="node" cx="215" cy="190" r="20"/><text class="label" x="215" y="190">D</text>
+            <circle class="node" cx="85" cy="190" r="20"/><text class="label" x="85" y="190">E</text>
+          </svg>
+        </div>
+        <p>For an undirected complete graph <span class="formula">Kₙ</span>, every vertex has degree <span class="formula">n−1</span> and <span class="formula">E=n(n−1)/2</span>.</p>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Complete connectivity often makes explicit graph construction too expensive; reason combinatorially or generate edges lazily.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Bipartite Graph</h3>
+        <div class="subhead">Vertices split into two disjoint sets</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 220" role="img" aria-label="Bipartite graph">
+            <text class="set-label" x="55" y="18">Set U</text>
+            <text class="set-label" x="225" y="18">Set V</text>
+            <path class="edge" d="M70 55 L230 55"/>
+            <path class="edge" d="M70 55 L230 110"/>
+            <path class="edge" d="M70 110 L230 55"/>
+            <path class="edge" d="M70 110 L230 170"/>
+            <path class="edge" d="M70 170 L230 110"/>
+            <circle class="node-blue" cx="60" cy="55" r="21"/><text class="label" x="60" y="55">U1</text>
+            <circle class="node-blue" cx="60" cy="110" r="21"/><text class="label" x="60" y="110">U2</text>
+            <circle class="node-blue" cx="60" cy="170" r="21"/><text class="label" x="60" y="170">U3</text>
+            <circle class="node-orange" cx="240" cy="55" r="21"/><text class="label" x="240" y="55">V1</text>
+            <circle class="node-orange" cx="240" cy="110" r="21"/><text class="label" x="240" y="110">V2</text>
+            <circle class="node-orange" cx="240" cy="170" r="21"/><text class="label" x="240" y="170">V3</text>
+          </svg>
+        </div>
+        <p>No edge connects vertices inside the same set. An undirected graph is bipartite exactly when it is 2-colorable, equivalently when it has no odd cycle.</p>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          Recognize team partitioning, matching, worker–job assignment, course–student relations, and “possible to split into two groups?” questions.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Tree</h3>
+        <div class="subhead">Connected + acyclic</div>
+        <div class="diagram">
+          <svg viewBox="0 0 300 220" role="img" aria-label="Tree graph">
+            <path class="edge" d="M150 30 L80 90"/>
+            <path class="edge" d="M150 30 L220 90"/>
+            <path class="edge" d="M80 90 L45 165"/>
+            <path class="edge" d="M80 90 L115 165"/>
+            <path class="edge" d="M220 90 L190 165"/>
+            <path class="edge" d="M220 90 L255 165"/>
+            <circle class="node" cx="150" cy="28" r="20"/><text class="label" x="150" y="28">A</text>
+            <circle class="node" cx="80" cy="90" r="20"/><text class="label" x="80" y="90">B</text>
+            <circle class="node" cx="220" cy="90" r="20"/><text class="label" x="220" y="90">C</text>
+            <circle class="node" cx="45" cy="170" r="20"/><text class="label" x="45" y="170">D</text>
+            <circle class="node" cx="115" cy="170" r="20"/><text class="label" x="115" y="170">E</text>
+            <circle class="node" cx="190" cy="170" r="20"/><text class="label" x="190" y="170">F</text>
+            <circle class="node" cx="255" cy="170" r="20"/><text class="label" x="255" y="170">G</text>
+          </svg>
+        </div>
+        <p>A tree with <span class="formula">V</span> vertices has exactly <span class="formula">V−1</span> edges and exactly one simple path between any two vertices.</p>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Exploit the absence of cycles: parent tracking can replace a full visited structure, and many problems reduce to postorder/subtree dynamic programming.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="density">
+    <div class="section-title">
+      <h2>7. Dense vs Sparse Graphs</h2>
+      <span class="kicker">Representation follows edge count</span>
+    </div>
+    <div class="grid-2">
+      <article class="card">
+        <h3>Dense Graph</h3>
+        <div class="subhead">Number of edges approaches the maximum</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Dense graph">
+            <path class="edge" d="M180 28 L65 80"/><path class="edge" d="M180 28 L290 80"/>
+            <path class="edge" d="M180 28 L290 165"/><path class="edge" d="M180 28 L70 165"/>
+            <path class="edge" d="M65 80 L290 80"/><path class="edge" d="M65 80 L290 165"/>
+            <path class="edge" d="M65 80 L70 165"/><path class="edge" d="M290 80 L290 165"/>
+            <path class="edge" d="M290 80 L70 165"/><path class="edge" d="M70 165 L290 165"/>
+            <circle class="node" cx="180" cy="26" r="21"/><text class="label" x="180" y="26">A</text>
+            <circle class="node" cx="60" cy="80" r="21"/><text class="label" x="60" y="80">B</text>
+            <circle class="node" cx="300" cy="80" r="21"/><text class="label" x="300" y="80">C</text>
+            <circle class="node" cx="65" cy="170" r="21"/><text class="label" x="65" y="170">D</text>
+            <circle class="node" cx="300" cy="170" r="21"/><text class="label" x="300" y="170">E</text>
+          </svg>
+        </div>
+        <p>When <span class="formula">E</span> is close to <span class="formula">V²</span>, adjacency matrices become reasonable and edge existence checks remain O(1).</p>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          For small, dense state spaces or all-pairs algorithms, a matrix may be simpler and faster in practice than nested hash structures.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Sparse Graph</h3>
+        <div class="subhead">Most possible edges do not exist</div>
+        <div class="diagram">
+          <svg viewBox="0 0 360 210" role="img" aria-label="Sparse graph">
+            <path class="edge" d="M45 110 L120 45"/>
+            <path class="edge" d="M120 45 L220 65"/>
+            <path class="edge" d="M220 65 L310 120"/>
+            <path class="edge" d="M45 110 L120 170"/>
+            <path class="edge" d="M120 170 L220 155"/>
+            <circle class="node" cx="40" cy="110" r="20"/><text class="label" x="40" y="110">A</text>
+            <circle class="node" cx="120" cy="40" r="20"/><text class="label" x="120" y="40">B</text>
+            <circle class="node" cx="220" cy="65" r="20"/><text class="label" x="220" y="65">C</text>
+            <circle class="node" cx="315" cy="120" r="20"/><text class="label" x="315" y="120">D</text>
+            <circle class="node" cx="120" cy="175" r="20"/><text class="label" x="120" y="175">E</text>
+            <circle class="node" cx="225" cy="160" r="20"/><text class="label" x="225" y="160">F</text>
+          </svg>
+        </div>
+        <p>When <span class="formula">E ≪ V²</span>, adjacency lists store only real edges and use O(V+E) memory.</p>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Most interview graphs are sparse. Default to adjacency lists unless constraints or required operations clearly favor a matrix.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="representations" class="page-break">
+    <div class="section-title">
+      <h2>8. Graph Representations</h2>
+      <span class="kicker">Choose for the operations you need</span>
+    </div>
+    <p class="lead">The representation determines memory cost and the complexity of edge lookup, neighbor iteration, insertion, and deletion.</p>
+
+    <div class="grid-2">
+      <article class="card">
+        <h3>Adjacency Matrix</h3>
+        <div class="subhead">A V × V grid</div>
+        <div class="diagram">
+          <svg viewBox="0 0 420 260" role="img" aria-label="Adjacency matrix visual grid">
+            <g transform="translate(75,30)">
+              <text class="svg-note" x="42" y="-12">A</text><text class="svg-note" x="92" y="-12">B</text><text class="svg-note" x="142" y="-12">C</text><text class="svg-note" x="192" y="-12">D</text>
+              <text class="svg-note" x="-28" y="34">A</text><text class="svg-note" x="-28" y="84">B</text><text class="svg-note" x="-28" y="134">C</text><text class="svg-note" x="-28" y="184">D</text>
+              <g stroke="#94a3b8" fill="none">
+                <path d="M0 0H200V200H0Z"/>
+                <path d="M50 0V200M100 0V200M150 0V200"/>
+                <path d="M0 50H200M0 100H200M0 150H200"/>
+              </g>
+              <g fill="#e0f2fe">
+                <rect x="50" y="0" width="50" height="50"/><rect x="0" y="50" width="50" height="50"/>
+                <rect x="100" y="0" width="50" height="50"/><rect x="0" y="100" width="50" height="50"/>
+                <rect x="150" y="50" width="50" height="50"/><rect x="50" y="150" width="50" height="50"/>
+                <rect x="150" y="100" width="50" height="50"/><rect x="100" y="150" width="50" height="50"/>
+              </g>
+              <g fill="#0f172a" font-size="14" font-weight="800" text-anchor="middle" dominant-baseline="middle">
+                <text x="25" y="25">0</text><text x="75" y="25">1</text><text x="125" y="25">1</text><text x="175" y="25">0</text>
+                <text x="25" y="75">1</text><text x="75" y="75">0</text><text x="125" y="75">0</text><text x="175" y="75">1</text>
+                <text x="25" y="125">1</text><text x="75" y="125">0</text><text x="125" y="125">0</text><text x="175" y="125">1</text>
+                <text x="25" y="175">0</text><text x="75" y="175">1</text><text x="125" y="175">1</text><text x="175" y="175">0</text>
+              </g>
+            </g>
+            <path class="edge" d="M315 95 L355 60"/><path class="edge" d="M315 95 L355 145"/>
+            <circle class="node" cx="300" cy="100" r="20"/><text class="label" x="300" y="100">A</text>
+            <circle class="node" cx="370" cy="50" r="20"/><text class="label" x="370" y="50">B</text>
+            <circle class="node" cx="370" cy="155" r="20"/><text class="label" x="370" y="155">C</text>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Space: <span class="formula">O(V²)</span></li>
+          <li>Edge lookup: <span class="formula">O(1)</span></li>
+          <li>Neighbor traversal: <span class="formula">O(V)</span></li>
+          <li>Store weight instead of 1 for weighted graphs.</li>
+        </ul>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Pick a matrix for dense graphs, constant-time edge queries, transitive closure, Floyd–Warshall, or when V is small enough that O(V²) is safe.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Adjacency List</h3>
+        <div class="subhead">Each vertex stores only its neighbors</div>
+        <div class="diagram">
+          <svg viewBox="0 0 420 260" role="img" aria-label="Adjacency list linked visual">
+            <defs>
+              <marker id="arrow-list" markerWidth="8" markerHeight="8" refX="7" refY="3" orient="auto">
+                <path d="M0,0 L0,6 L8,3 z" fill="#0284c7"/>
+              </marker>
+            </defs>
+            <g font-family="Inter,Arial,sans-serif" font-weight="800" font-size="13">
+              <g transform="translate(18,25)">
+                <rect x="0" y="0" width="44" height="36" rx="8" fill="#1e293b"/><text x="22" y="23" fill="white" text-anchor="middle">A</text>
+                <path class="edge" d="M50 18 L93 18" marker-end="url(#arrow-list)"/>
+                <rect x="98" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="130" y="23" fill="#0f172a" text-anchor="middle">B</text>
+                <path class="edge" d="M166 18 L209 18" marker-end="url(#arrow-list)"/>
+                <rect x="214" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="246" y="23" fill="#0f172a" text-anchor="middle">C</text>
+              </g>
+              <g transform="translate(18,85)">
+                <rect x="0" y="0" width="44" height="36" rx="8" fill="#1e293b"/><text x="22" y="23" fill="white" text-anchor="middle">B</text>
+                <path class="edge" d="M50 18 L93 18" marker-end="url(#arrow-list)"/>
+                <rect x="98" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="130" y="23" fill="#0f172a" text-anchor="middle">A</text>
+                <path class="edge" d="M166 18 L209 18" marker-end="url(#arrow-list)"/>
+                <rect x="214" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="246" y="23" fill="#0f172a" text-anchor="middle">D</text>
+              </g>
+              <g transform="translate(18,145)">
+                <rect x="0" y="0" width="44" height="36" rx="8" fill="#1e293b"/><text x="22" y="23" fill="white" text-anchor="middle">C</text>
+                <path class="edge" d="M50 18 L93 18" marker-end="url(#arrow-list)"/>
+                <rect x="98" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="130" y="23" fill="#0f172a" text-anchor="middle">A</text>
+                <path class="edge" d="M166 18 L209 18" marker-end="url(#arrow-list)"/>
+                <rect x="214" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="246" y="23" fill="#0f172a" text-anchor="middle">D</text>
+              </g>
+              <g transform="translate(18,205)">
+                <rect x="0" y="0" width="44" height="36" rx="8" fill="#1e293b"/><text x="22" y="23" fill="white" text-anchor="middle">D</text>
+                <path class="edge" d="M50 18 L93 18" marker-end="url(#arrow-list)"/>
+                <rect x="98" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="130" y="23" fill="#0f172a" text-anchor="middle">B</text>
+                <path class="edge" d="M166 18 L209 18" marker-end="url(#arrow-list)"/>
+                <rect x="214" y="0" width="64" height="36" rx="8" fill="#e0f2fe" stroke="#0284c7"/><text x="246" y="23" fill="#0f172a" text-anchor="middle">C</text>
+              </g>
+            </g>
+            <text class="svg-note" x="315" y="45">Only real edges</text>
+            <text class="svg-note" x="315" y="65">are stored.</text>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Space: <span class="formula">O(V+E)</span></li>
+          <li>Edge lookup: <span class="formula">O(deg(u))</span></li>
+          <li>Neighbor traversal: <span class="formula">O(deg(u))</span></li>
+          <li>Default representation for sparse graphs.</li>
+        </ul>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          This is the standard choice for BFS, DFS, connected components, topological sort, Dijkstra, and most coding interview graph problems.
+        </div>
+      </article>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <article class="card">
+        <h3>Edge List</h3>
+        <div class="subhead">A flat list of edge tuples</div>
+        <div class="diagram">
+          <svg viewBox="0 0 420 190" role="img" aria-label="Edge list visual">
+            <g transform="translate(22,25)" font-family="Inter,Arial,sans-serif" font-weight="800">
+              <rect x="0" y="0" width="120" height="34" rx="9" fill="#e0f2fe" stroke="#0284c7"/><text x="60" y="22" text-anchor="middle" fill="#0f172a">(A, B, 4)</text>
+              <rect x="0" y="45" width="120" height="34" rx="9" fill="#e0f2fe" stroke="#0284c7"/><text x="60" y="67" text-anchor="middle" fill="#0f172a">(B, C, 2)</text>
+              <rect x="0" y="90" width="120" height="34" rx="9" fill="#e0f2fe" stroke="#0284c7"/><text x="60" y="112" text-anchor="middle" fill="#0f172a">(A, C, 7)</text>
+            </g>
+            <path class="edge" d="M245 115 L315 45"/><text class="weight" x="270" y="75">4</text>
+            <path class="edge" d="M315 45 L370 120"/><text class="weight" x="350" y="75">2</text>
+            <path class="edge" d="M245 115 L370 120"/><text class="weight" x="307" y="108">7</text>
+            <circle class="node" cx="235" cy="120" r="21"/><text class="label" x="235" y="120">A</text>
+            <circle class="node" cx="315" cy="35" r="21"/><text class="label" x="315" y="35">B</text>
+            <circle class="node" cx="380" cy="125" r="21"/><text class="label" x="380" y="125">C</text>
+          </svg>
+        </div>
+        <p>Stores edges as pairs or weighted triples. It is compact and convenient when the algorithm processes edges globally.</p>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          Kruskal’s algorithm starts from an edge list because it sorts all edges by weight.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Incidence Matrix</h3>
+        <div class="subhead">Rows are vertices; columns are edges</div>
+        <div class="diagram">
+          <svg viewBox="0 0 420 190" role="img" aria-label="Incidence matrix visual">
+            <g transform="translate(82,20)">
+              <text class="svg-note" x="37" y="-7">e1</text><text class="svg-note" x="87" y="-7">e2</text><text class="svg-note" x="137" y="-7">e3</text>
+              <text class="svg-note" x="-26" y="28">A</text><text class="svg-note" x="-26" y="68">B</text><text class="svg-note" x="-26" y="108">C</text><text class="svg-note" x="-26" y="148">D</text>
+              <g stroke="#94a3b8" fill="none">
+                <path d="M0 0H150V160H0Z"/><path d="M50 0V160M100 0V160"/>
+                <path d="M0 40H150M0 80H150M0 120H150"/>
+              </g>
+              <g fill="#0f172a" font-size="13" font-weight="800" text-anchor="middle" dominant-baseline="middle">
+                <text x="25" y="20">1</text><text x="75" y="20">0</text><text x="125" y="20">1</text>
+                <text x="25" y="60">1</text><text x="75" y="60">1</text><text x="125" y="60">0</text>
+                <text x="25" y="100">0</text><text x="75" y="100">1</text><text x="125" y="100">0</text>
+                <text x="25" y="140">0</text><text x="75" y="140">0</text><text x="125" y="140">1</text>
+              </g>
+            </g>
+            <text class="svg-note" x="270" y="55">Each column marks</text>
+            <text class="svg-note" x="270" y="75">the vertices touched</text>
+            <text class="svg-note" x="270" y="95">by one edge.</text>
+          </svg>
+        </div>
+        <p>Useful in graph theory, linear algebra formulations, flow networks, and specialized network analysis.</p>
+        <div class="trigger violet">
+          <strong>FAANG Interview Trigger</strong>
+          Rare in coding interviews. Mention it when discussing alternative representations, but do not default to it for traversal problems.
+        </div>
+      </article>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Feature</th><th>Adjacency Matrix</th><th>Adjacency List</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Representation</strong></td><td>2D array</td><td>Array/map of lists</td></tr>
+          <tr><td><strong>Space</strong></td><td>O(V²)</td><td>O(V+E)</td></tr>
+          <tr><td><strong>Edge lookup</strong></td><td>O(1)</td><td>O(degree of vertex)</td></tr>
+          <tr><td><strong>Traverse neighbors</strong></td><td>O(V)</td><td>O(degree of vertex)</td></tr>
+          <tr><td><strong>Add edge</strong></td><td>O(1)</td><td>O(1) average</td></tr>
+          <tr><td><strong>Remove edge</strong></td><td>O(1)</td><td>O(degree of vertex)</td></tr>
+          <tr><td><strong>Best suited for</strong></td><td>Dense graphs</td><td>Sparse graphs</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="traversal">
+    <div class="section-title">
+      <h2>9. Graph Traversal: DFS vs BFS</h2>
+      <span class="kicker">Stack depth vs queue layers</span>
+    </div>
+
+    <div class="grid-2">
+      <article class="card">
+        <h3>Depth-First Search (DFS)</h3>
+        <div class="subhead">Explore deeply, then backtrack</div>
+        <div class="diagram">
+          <svg viewBox="0 0 380 250" role="img" aria-label="DFS traversal">
+            <path class="edge-hot" d="M190 30 L100 85"/>
+            <path class="edge-hot" d="M100 85 L55 165"/>
+            <path class="edge-hot" d="M55 165 L120 220"/>
+            <path class="edge-muted" d="M100 85 L145 165"/>
+            <path class="edge-muted" d="M190 30 L280 85"/>
+            <path class="edge-muted" d="M280 85 L245 165"/>
+            <path class="edge-muted" d="M280 85 L325 165"/>
+            <circle class="node-orange" cx="190" cy="28" r="22"/><text class="label" x="190" y="28">1</text>
+            <circle class="node-orange" cx="100" cy="85" r="22"/><text class="label" x="100" y="85">2</text>
+            <circle class="node" cx="280" cy="85" r="22"/><text class="label" x="280" y="85">6</text>
+            <circle class="node-orange" cx="55" cy="165" r="22"/><text class="label" x="55" y="165">3</text>
+            <circle class="node" cx="145" cy="165" r="22"/><text class="label" x="145" y="165">5</text>
+            <circle class="node" cx="245" cy="165" r="22"/><text class="label" x="245" y="165">7</text>
+            <circle class="node" cx="325" cy="165" r="22"/><text class="label" x="325" y="165">8</text>
+            <circle class="node-orange" cx="120" cy="220" r="22"/><text class="label" x="120" y="220">4</text>
+            <text class="svg-note" x="198" y="225">Stack / recursion</text>
+          </svg>
+        </div>
+        <p>DFS follows one path as far as possible before backtracking. It uses an explicit stack or the call stack.</p>
+        <ul class="props">
+          <li>Cycle detection</li>
+          <li>Topological sorting</li>
+          <li>Connected components</li>
+          <li>Backtracking and path enumeration</li>
+        </ul>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          Choose DFS when the problem asks whether a path exists, requires postorder information, explores all possibilities, or needs recursion-state cycle detection.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Breadth-First Search (BFS)</h3>
+        <div class="subhead">Visit level by level</div>
+        <div class="diagram">
+          <svg viewBox="0 0 380 250" role="img" aria-label="BFS traversal">
+            <path class="edge" d="M190 30 L100 85"/>
+            <path class="edge" d="M190 30 L280 85"/>
+            <path class="edge" d="M100 85 L55 165"/>
+            <path class="edge" d="M100 85 L145 165"/>
+            <path class="edge" d="M280 85 L245 165"/>
+            <path class="edge" d="M280 85 L325 165"/>
+            <path class="edge" d="M55 165 L120 220"/>
+            <rect x="25" y="8" width="330" height="42" rx="18" fill="#e0f2fe" opacity=".7"/>
+            <rect x="25" y="62" width="330" height="47" rx="18" fill="#dcfce7" opacity=".65"/>
+            <rect x="25" y="138" width="330" height="50" rx="18" fill="#ffedd5" opacity=".65"/>
+            <circle class="node-blue" cx="190" cy="28" r="22"/><text class="label" x="190" y="28">1</text>
+            <circle class="node-green" cx="100" cy="85" r="22"/><text class="label" x="100" y="85">2</text>
+            <circle class="node-green" cx="280" cy="85" r="22"/><text class="label" x="280" y="85">3</text>
+            <circle class="node-orange" cx="55" cy="165" r="22"/><text class="label" x="55" y="165">4</text>
+            <circle class="node-orange" cx="145" cy="165" r="22"/><text class="label" x="145" y="165">5</text>
+            <circle class="node-orange" cx="245" cy="165" r="22"/><text class="label" x="245" y="165">6</text>
+            <circle class="node-orange" cx="325" cy="165" r="22"/><text class="label" x="325" y="165">7</text>
+            <circle class="node" cx="120" cy="220" r="22"/><text class="label" x="120" y="220">8</text>
+            <text class="svg-note" x="270" y="224">Queue</text>
+          </svg>
+        </div>
+        <p>BFS explores all neighbors at distance 1, then distance 2, and so on. It uses a queue.</p>
+        <ul class="props">
+          <li>Shortest path in unweighted graphs</li>
+          <li>Level-order traversal</li>
+          <li>Multi-source spreading simulations</li>
+          <li>Bipartite checking by level/color</li>
+        </ul>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Choose BFS when the answer is “minimum number of moves/edges,” when distance grows in layers, or when multiple sources expand simultaneously.
+        </div>
+      </article>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Feature</th><th>DFS</th><th>BFS</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Traversal order</strong></td><td>Deep before backtracking</td><td>Level by level</td></tr>
+          <tr><td><strong>Data structure</strong></td><td>Stack or recursion</td><td>Queue</td></tr>
+          <tr><td><strong>Shortest path</strong></td><td>Not guaranteed</td><td>Guaranteed in unweighted graphs</td></tr>
+          <tr><td><strong>Memory</strong></td><td>Often lower; O(depth)</td><td>Can hold an entire frontier</td></tr>
+          <tr><td><strong>Common uses</strong></td><td>Cycles, topological sort, components</td><td>Shortest path, layers, spreading</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="table-card">
+      <table>
+        <thead><tr><th>Representation</th><th>DFS</th><th>BFS</th><th>Reason</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Adjacency list</strong></td><td>O(V+E)</td><td>O(V+E)</td><td>Every vertex and edge is processed at most once.</td></tr>
+          <tr><td><strong>Adjacency matrix</strong></td><td>O(V²)</td><td>O(V²)</td><td>Each visited vertex scans an entire row of V possible neighbors.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section id="shortest-path">
+    <div class="section-title">
+      <h2>10. Shortest Paths</h2>
+      <span class="kicker">Choose by edge-weight constraints</span>
+    </div>
+
+    <div class="algorithm">
+      <div class="algorithm-head">
+        <div>
+          <h3>Shortest Path in an Unweighted Graph — BFS</h3>
+          <div class="subhead">First arrival gives minimum edge count</div>
+        </div>
+        <span class="complexity">O(V + E)</span>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 250" role="img" aria-label="Shortest path in unweighted graph">
+          <path class="edge-muted" d="M65 125 L175 55"/>
+          <path class="edge-green" d="M65 125 L180 180"/>
+          <path class="edge-muted" d="M175 55 L310 85"/>
+          <path class="edge-green" d="M180 180 L330 185"/>
+          <path class="edge-green" d="M330 185 L455 110"/>
+          <path class="edge-muted" d="M310 85 L455 110"/>
+          <path class="edge-muted" d="M455 110 L585 60"/>
+          <path class="edge-muted" d="M455 110 L590 175"/>
+          <circle class="node-blue" cx="50" cy="130" r="24"/><text class="label" x="50" y="130">0</text>
+          <circle class="node" cx="175" cy="45" r="24"/><text class="label" x="175" y="45">1</text>
+          <circle class="node-green" cx="180" cy="190" r="24"/><text class="label" x="180" y="190">3</text>
+          <circle class="node" cx="315" cy="80" r="24"/><text class="label" x="315" y="80">2</text>
+          <circle class="node-green" cx="335" cy="190" r="24"/><text class="label" x="335" y="190">4</text>
+          <circle class="node-orange" cx="465" cy="105" r="24"/><text class="label" x="465" y="105">7</text>
+          <circle class="node" cx="595" cy="55" r="24"/><text class="label" x="595" y="55">6</text>
+          <circle class="node" cx="600" cy="180" r="24"/><text class="label" x="600" y="180">5</text>
+          <text class="svg-note" x="70" y="224">Shortest route highlighted: 0 → 3 → 4 → 7</text>
+          <text class="svg-note" x="500" y="224">Parent pointers reconstruct the route.</text>
+        </svg>
+      </div>
+      <ol class="steps">
+        <li>Start BFS at the source and set its distance to 0.</li>
+        <li>When first discovering a neighbor, mark it visited and store its parent.</li>
+        <li>Stop when the destination is reached or continue for all distances.</li>
+        <li>Reconstruct the path by walking backward through parent pointers.</li>
+      </ol>
+      <div class="trigger green">
+        <strong>FAANG Interview Trigger</strong>
+        “Minimum moves,” “fewest transformations,” “closest exit,” and “shortest number of flights when each flight counts equally” are BFS signals.
+      </div>
+    </div>
+
+    <div class="decision">
+      <div><b>Unweighted / equal cost</b><span>BFS</span></div>
+      <div><b>Non-negative weights</b><span>Dijkstra with a min-heap</span></div>
+      <div><b>Negative weights</b><span>Bellman–Ford; detects negative cycles</span></div>
+      <div><b>All pairs</b><span>Floyd–Warshall, usually O(V³)</span></div>
+    </div>
+
+    <div class="algorithm" style="margin-top:16px">
+      <div class="algorithm-head">
+        <div>
+          <h3>Dijkstra’s Algorithm</h3>
+          <div class="subhead">Single-source shortest paths with non-negative edge weights</div>
+        </div>
+        <span class="complexity">O((V+E) log V)</span>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 270" role="img" aria-label="Dijkstra shortest path diagram">
+          <path class="edge-green" d="M70 140 L220 55"/><text class="weight" x="135" y="85">4</text>
+          <path class="edge-muted" d="M70 140 L215 210"/><text class="weight" x="135" y="190">9</text>
+          <path class="edge-muted" d="M220 55 L400 70"/><text class="weight" x="310" y="52">5</text>
+          <path class="edge-green" d="M220 55 L390 185"/><text class="weight" x="300" y="125">6</text>
+          <path class="edge-muted" d="M215 210 L390 185"/><text class="weight" x="300" y="215">2</text>
+          <path class="edge-green" d="M390 185 L555 115"/><text class="weight" x="470" y="132">3</text>
+          <path class="edge-muted" d="M400 70 L555 115"/><text class="weight" x="480" y="75">8</text>
+          <circle class="node-blue" cx="55" cy="145" r="25"/><text class="label" x="55" y="145">0</text>
+          <circle class="node-green" cx="225" cy="50" r="25"/><text class="label" x="225" y="50">1</text>
+          <circle class="node" cx="215" cy="215" r="25"/><text class="label" x="215" y="215">2</text>
+          <circle class="node" cx="405" cy="65" r="25"/><text class="label" x="405" y="65">3</text>
+          <circle class="node-green" cx="395" cy="190" r="25"/><text class="label" x="395" y="190">4</text>
+          <circle class="node-orange" cx="565" cy="115" r="25"/><text class="label" x="565" y="115">5</text>
+          <g transform="translate(610,40)">
+            <rect x="0" y="0" width="88" height="155" rx="12" fill="#f1f5f9" stroke="#cbd5e1"/>
+            <text class="svg-note" x="12" y="24">Min-heap</text>
+            <text class="svg-note" x="12" y="50">(0, 0)</text>
+            <text class="svg-note" x="12" y="75">(4, 1)</text>
+            <text class="svg-note" x="12" y="100">(9, 2)</text>
+            <text class="svg-note" x="12" y="125">...</text>
+          </g>
+          <text class="svg-note" x="80" y="252">Highlighted shortest path to 5: 0 → 1 → 4 → 5, total cost = 4 + 6 + 3 = 13</text>
+        </svg>
+      </div>
+      <ol class="steps">
+        <li>Set the source distance to 0 and every other distance to infinity.</li>
+        <li>Push the source into a min-priority queue.</li>
+        <li>Pop the vertex with the smallest tentative distance.</li>
+        <li>Relax each outgoing edge: update a neighbor when a shorter route is found.</li>
+        <li>Ignore stale heap entries or mark finalized vertices.</li>
+      </ol>
+      <div class="callout warning"><strong>Critical constraint:</strong> Dijkstra is not correct when negative-weight edges can produce a later, cheaper route to an already finalized vertex.</div>
+    </div>
+  </section>
+
+  <section id="spanning" class="page-break">
+    <div class="section-title">
+      <h2>11. Spanning Trees and Minimum Spanning Trees</h2>
+      <span class="kicker">Connect everything without cycles</span>
+    </div>
+
+    <div class="grid-2">
+      <article class="card">
+        <h3>Spanning Tree</h3>
+        <div class="subhead">A connected, acyclic subgraph covering all vertices</div>
+        <div class="diagram">
+          <svg viewBox="0 0 390 245" role="img" aria-label="Spanning tree">
+            <path class="edge-muted dash" d="M60 130 L145 45"/>
+            <path class="edge-muted dash" d="M145 45 L285 70"/>
+            <path class="edge-muted dash" d="M60 130 L155 200"/>
+            <path class="edge-muted dash" d="M155 200 L300 175"/>
+            <path class="edge-muted dash" d="M285 70 L300 175"/>
+            <path class="edge-muted dash" d="M145 45 L155 200"/>
+            <path class="edge-green" d="M60 130 L145 45"/>
+            <path class="edge-green" d="M145 45 L285 70"/>
+            <path class="edge-green" d="M60 130 L155 200"/>
+            <path class="edge-green" d="M155 200 L300 175"/>
+            <circle class="node" cx="55" cy="135" r="22"/><text class="label" x="55" y="135">A</text>
+            <circle class="node" cx="145" cy="40" r="22"/><text class="label" x="145" y="40">B</text>
+            <circle class="node" cx="290" cy="70" r="22"/><text class="label" x="290" y="70">C</text>
+            <circle class="node" cx="155" cy="205" r="22"/><text class="label" x="155" y="205">D</text>
+            <circle class="node" cx="305" cy="180" r="22"/><text class="label" x="305" y="180">E</text>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Contains all original vertices.</li>
+          <li>Has exactly <span class="formula">V−1</span> edges.</li>
+          <li>Contains no cycle.</li>
+          <li>A connected graph can have many spanning trees.</li>
+        </ul>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          A spanning tree is about feasibility and structure, not minimum cost. It often appears in network design and proofs about connectivity.
+        </div>
+      </article>
+
+      <article class="card">
+        <h3>Minimum Spanning Tree (MST)</h3>
+        <div class="subhead">The spanning tree with minimum total edge weight</div>
+        <div class="diagram">
+          <svg viewBox="0 0 390 245" role="img" aria-label="Minimum spanning tree">
+            <path class="edge-green" d="M60 130 L145 45"/><text class="weight" x="95" y="76">1</text>
+            <path class="edge-green" d="M145 45 L285 70"/><text class="weight" x="220" y="42">2</text>
+            <path class="edge-muted" d="M60 130 L155 200"/><text class="weight" x="97" y="180">8</text>
+            <path class="edge-green" d="M155 200 L300 175"/><text class="weight" x="225" y="205">3</text>
+            <path class="edge-green" d="M285 70 L300 175"/><text class="weight" x="303" y="120">4</text>
+            <path class="edge-muted" d="M145 45 L155 200"/><text class="weight" x="165" y="125">7</text>
+            <path class="edge-muted" d="M60 130 L300 175"/><text class="weight" x="190" y="140">10</text>
+            <circle class="node" cx="55" cy="135" r="22"/><text class="label" x="55" y="135">A</text>
+            <circle class="node" cx="145" cy="40" r="22"/><text class="label" x="145" y="40">B</text>
+            <circle class="node" cx="290" cy="70" r="22"/><text class="label" x="290" y="70">C</text>
+            <circle class="node" cx="155" cy="205" r="22"/><text class="label" x="155" y="205">D</text>
+            <circle class="node" cx="305" cy="180" r="22"/><text class="label" x="305" y="180">E</text>
+            <text class="svg-note" x="24" y="230">MST total = 1 + 2 + 3 + 4 = 10</text>
+          </svg>
+        </div>
+        <ul class="props">
+          <li>Defined for weighted, connected, undirected graphs.</li>
+          <li>Has <span class="formula">V−1</span> edges and no cycle.</li>
+          <li>Found using Prim’s or Kruskal’s algorithm.</li>
+        </ul>
+        <div class="trigger orange">
+          <strong>FAANG Interview Trigger</strong>
+          “Connect all cities/computers/points with minimum total cost” is an MST problem—not a shortest-path problem.
+        </div>
+      </article>
+    </div>
+
+    <div class="grid-2" style="margin-top:16px">
+      <article class="algorithm">
+        <div class="algorithm-head">
+          <div>
+            <h3>Kruskal’s Algorithm</h3>
+            <div class="subhead">Sort globally; add safe edges</div>
+          </div>
+          <span class="complexity">O(E log E)</span>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 430 235" role="img" aria-label="Kruskal algorithm">
+            <g transform="translate(10,18)">
+              <text class="set-label" x="20" y="0">Sorted edge stream</text>
+              <rect x="0" y="15" width="85" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text class="svg-note" x="14" y="35">AB · 1 ✓</text>
+              <rect x="0" y="53" width="85" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text class="svg-note" x="14" y="73">BC · 2 ✓</text>
+              <rect x="0" y="91" width="85" height="30" rx="7" fill="#fee2e2" stroke="#dc2626"/><text class="svg-note" x="14" y="111">AC · 3 ✕</text>
+              <rect x="0" y="129" width="85" height="30" rx="7" fill="#dcfce7" stroke="#16a34a"/><text class="svg-note" x="14" y="149">CD · 4 ✓</text>
+            </g>
+            <path class="edge-green" d="M185 120 L270 45"/><text class="weight" x="220" y="72">1</text>
+            <path class="edge-green" d="M270 45 L350 120"/><text class="weight" x="315" y="70">2</text>
+            <path class="edge-muted dash" d="M185 120 L350 120"/><text class="weight" x="270" y="108">3</text>
+            <path class="edge-green" d="M350 120 L270 195"/><text class="weight" x="315" y="170">4</text>
+            <circle class="node" cx="175" cy="125" r="21"/><text class="label" x="175" y="125">A</text>
+            <circle class="node" cx="270" cy="38" r="21"/><text class="label" x="270" y="38">B</text>
+            <circle class="node" cx="360" cy="125" r="21"/><text class="label" x="360" y="125">C</text>
+            <circle class="node" cx="270" cy="202" r="21"/><text class="label" x="270" y="202">D</text>
+          </svg>
+        </div>
+        <ol class="steps">
+          <li>Sort all edges in ascending weight.</li>
+          <li>Add the next edge only if its endpoints are in different components.</li>
+          <li>Use Disjoint Set Union (Union-Find) to detect cycles efficiently.</li>
+          <li>Stop after selecting V−1 edges.</li>
+        </ol>
+        <div class="trigger">
+          <strong>FAANG Interview Trigger</strong>
+          Prefer Kruskal when edges are already listed or sortable, and when the graph may be sparse.
+        </div>
+      </article>
+
+      <article class="algorithm">
+        <div class="algorithm-head">
+          <div>
+            <h3>Prim’s Algorithm</h3>
+            <div class="subhead">Grow one connected tree frontier</div>
+          </div>
+          <span class="complexity">O(E log V)</span>
+        </div>
+        <div class="diagram">
+          <svg viewBox="0 0 430 235" role="img" aria-label="Prim algorithm">
+            <path class="edge-green" d="M75 120 L180 45"/><text class="weight" x="120" y="72">1</text>
+            <path class="edge-green" d="M180 45 L300 75"/><text class="weight" x="245" y="45">2</text>
+            <path class="edge-green" d="M300 75 L340 175"/><text class="weight" x="330" y="120">3</text>
+            <path class="edge-muted" d="M75 120 L180 195"/><text class="weight" x="122" y="172">7</text>
+            <path class="edge-green" d="M180 195 L340 175"/><text class="weight" x="260" y="205">4</text>
+            <circle class="node-blue" cx="65" cy="125" r="22"/><text class="label" x="65" y="125">A</text>
+            <circle class="node-green" cx="180" cy="40" r="22"/><text class="label" x="180" y="40">B</text>
+            <circle class="node-green" cx="310" cy="75" r="22"/><text class="label" x="310" y="75">C</text>
+            <circle class="node-green" cx="180" cy="200" r="22"/><text class="label" x="180" y="200">D</text>
+            <circle class="node-green" cx="350" cy="180" r="22"/><text class="label" x="350" y="180">E</text>
+            <text class="svg-note" x="15" y="24">Start at A</text>
+          </svg>
+        </div>
+        <ol class="steps">
+          <li>Choose any starting vertex.</li>
+          <li>Push outgoing edges into a min-heap.</li>
+          <li>Take the minimum edge that reaches an unvisited vertex.</li>
+          <li>Add the vertex and expose its outgoing edges.</li>
+        </ol>
+        <div class="trigger green">
+          <strong>FAANG Interview Trigger</strong>
+          Prefer Prim when working from an adjacency list and growing a single connected component from a chosen start.
+        </div>
+      </article>
+    </div>
+  </section>
+
+  <section id="cycle-detection">
+    <div class="section-title">
+      <h2>12. Detecting a Cycle in a Directed Graph</h2>
+      <span class="kicker">Visited is not enough</span>
+    </div>
+
+    <div class="algorithm">
+      <div class="algorithm-head">
+        <div>
+          <h3>DFS + Recursion State</h3>
+          <div class="subhead">A back edge to an active vertex proves a cycle</div>
+        </div>
+        <span class="complexity">O(V + E)</span>
+      </div>
+      <div class="diagram">
+        <svg viewBox="0 0 720 280" role="img" aria-label="Directed cycle detection with recursion stack">
+          <defs>
+            <marker id="arrow-cycle" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#0284c7"/>
+            </marker>
+            <marker id="arrow-cycle-red" markerWidth="9" markerHeight="9" refX="8" refY="3" orient="auto">
+              <path d="M0,0 L0,6 L9,3 z" fill="#dc2626"/>
+            </marker>
+          </defs>
+          <path class="edge" d="M80 135 L195 65" marker-end="url(#arrow-cycle)"/>
+          <path class="edge" d="M220 70 L335 125" marker-end="url(#arrow-cycle)"/>
+          <path class="edge" d="M355 145 L250 220" marker-end="url(#arrow-cycle)"/>
+          <path d="M225 215 C145 230,120 190,185 82" stroke="#dc2626" stroke-width="4" fill="none" marker-end="url(#arrow-cycle-red)"/>
+          <path class="edge" d="M355 125 L485 70" marker-end="url(#arrow-cycle)"/>
+          <circle class="node-orange" cx="65" cy="140" r="25"/><text class="label" x="65" y="140">A</text>
+          <circle class="node-orange" cx="205" cy="60" r="25"/><text class="label" x="205" y="60">B</text>
+          <circle class="node-orange" cx="350" cy="135" r="25"/><text class="label" x="350" y="135">C</text>
+          <circle class="node-orange" cx="235" cy="225" r="25"/><text class="label" x="235" y="225">D</text>
+          <circle class="node" cx="500" cy="65" r="25"/><text class="label" x="500" y="65">E</text>
+
+          <g transform="translate(555,32)">
+            <rect x="0" y="0" width="135" height="200" rx="14" fill="#fff7ed" stroke="#fb923c"/>
+            <text class="set-label" x="18" y="25">DFS state</text>
+            <rect x="18" y="42" width="99" height="29" rx="7" fill="#ffedd5"/><text class="svg-note" x="31" y="61">A = active</text>
+            <rect x="18" y="79" width="99" height="29" rx="7" fill="#ffedd5"/><text class="svg-note" x="31" y="98">B = active</text>
+            <rect x="18" y="116" width="99" height="29" rx="7" fill="#ffedd5"/><text class="svg-note" x="31" y="135">C = active</text>
+            <rect x="18" y="153" width="99" height="29" rx="7" fill="#ffedd5"/><text class="svg-note" x="31" y="172">D = active</text>
+          </g>
+          <text x="92" y="260" fill="#991b1b" font-size="11" font-weight="900" font-family="Inter,Arial,sans-serif">D → B is a back edge to an active ancestor ⇒ directed cycle</text>
+        </svg>
+      </div>
+      <ol class="steps">
+        <li>Start DFS from each unvisited vertex.</li>
+        <li>Mark the current vertex as visited and active in the recursion path.</li>
+        <li>If an edge reaches an active vertex, report a cycle.</li>
+        <li>After exploring all neighbors, remove the vertex from the active path.</li>
+      </ol>
+
+      <div class="grid-2">
+        <div class="code"><span class="kw">boolean</span> dfs(u):
+    state[u] = VISITING
+    <span class="kw">for</span> v in graph[u]:
+        <span class="kw">if</span> state[v] == VISITING:
+            <span class="kw">return true</span>
+        <span class="kw">if</span> state[v] == UNVISITED
+           and dfs(v):
+            <span class="kw">return true</span>
+    state[u] = VISITED
+    <span class="kw">return false</span></div>
+        <div>
+          <div class="callout"><strong>Three-state model:</strong><br>0 = unvisited<br>1 = visiting / active<br>2 = fully processed</div>
+          <div class="trigger red">
+            <strong>FAANG Interview Trigger</strong>
+            Course Schedule and dependency-cycle questions can be solved with DFS coloring or Kahn’s topological sort. State why a normal visited set alone cannot distinguish an active ancestor from a fully processed node.
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="cheat">
+      <h2>Rapid Interview Recognition Sheet</h2>
+      <div class="cheat-grid">
+        <div class="cheat-item"><strong>Fewest moves / hops</strong><span>BFS on an unweighted graph.</span></div>
+        <div class="cheat-item"><strong>Cost with non-negative weights</strong><span>Dijkstra + min-heap.</span></div>
+        <div class="cheat-item"><strong>Negative edge weights</strong><span>Bellman–Ford; watch for negative cycles.</span></div>
+        <div class="cheat-item"><strong>All-pairs shortest paths</strong><span>Floyd–Warshall when V is small.</span></div>
+        <div class="cheat-item"><strong>Dependencies / ordering</strong><span>DAG + topological sort.</span></div>
+        <div class="cheat-item"><strong>Connected components</strong><span>Outer loop + DFS/BFS or Union-Find.</span></div>
+        <div class="cheat-item"><strong>Split into two groups</strong><span>Bipartite check via 2-coloring.</span></div>
+        <div class="cheat-item"><strong>Connect all nodes cheaply</strong><span>Minimum spanning tree.</span></div>
+        <div class="cheat-item"><strong>Global sorted edges</strong><span>Kruskal + Union-Find.</span></div>
+        <div class="cheat-item"><strong>Grow from one start</strong><span>Prim + min-heap.</span></div>
+        <div class="cheat-item"><strong>Directed dependency cycle</strong><span>DFS active-state tracking or Kahn’s algorithm.</span></div>
+        <div class="cheat-item"><strong>Sparse interview graph</strong><span>Adjacency list by default.</span></div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    Prepared as a standalone interview study document. All diagrams are original inline SVG and remain sharp when printed or converted to PDF.
+  </footer>
+</main>
+</body>
+</html>
