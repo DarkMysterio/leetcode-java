@@ -1,0 +1,879 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clone Graph (DFS + HashMap) Visualizer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.18);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .pulse-amber {
+            animation: pulse-amber-glow 1.5s infinite;
+        }
+        @keyframes pulse-amber-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.8); }
+            50% { box-shadow: 0 0 0 10px rgba(245, 158, 11, 0); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.5s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.8); }
+            50% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+        }
+        .graph-edge {
+            transition: stroke 0.35s ease, stroke-width 0.35s ease;
+        }
+        .graph-node-group {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .graph-node-group:hover {
+            transform: scale(1.08);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950">
+                    <i class="fa-solid fa-clone text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Clone Graph Visualizer
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">DFS + HashMap</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Deep copy graph traversal &amp; cycle handling via Original-to-Clone Mapping</p>
+                </div>
+            </div>
+
+            <!-- Presets Selector -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-80">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Standard 4-Node Cycle (1-2-3-4)</option>
+                        <option value="1">2. Triangle with Tail (3-Node Cycle + 1 Tail)</option>
+                        <option value="2">3. Linear 3-Node Graph (1-2-3)</option>
+                        <option value="3">4. Single Isolated Node (val = 1, 0 neighbors)</option>
+                        <option value="4">5. Empty Graph (null node input)</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Controls Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Step Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Scrubber -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1800">0.5x Speed</option>
+                        <option value="1100" selected>1.0x Speed</option>
+                        <option value="500">2.0x Speed</option>
+                        <option value="250">3.5x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Dual Graph Canvas Section -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Dual Graph Monitors (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-5">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-cyan-400"></i> Dual Graph State Monitors
+                        </h2>
+                        <span id="statusBadge" class="mono text-xs font-bold px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                            Initializing
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-5">
+
+                        <!-- Original Graph Canvas -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center gap-2">
+                            <div class="flex items-center justify-between w-full border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-sky-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-circle-nodes"></i> Original Graph
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-mono">[Input]</span>
+                            </div>
+
+                            <div class="w-full h-[220px] relative bg-slate-950/80 rounded-lg overflow-hidden flex items-center justify-center">
+                                <svg id="originalSvg" class="w-full h-full" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet">
+                                    <!-- Rendered dynamically -->
+                                </svg>
+                            </div>
+                        </div>
+
+                        <!-- Cloned Graph Canvas -->
+                        <div class="bg-slate-950 border border-slate-800 rounded-xl p-3.5 flex flex-col items-center gap-2">
+                            <div class="flex items-center justify-between w-full border-b border-slate-800/80 pb-2">
+                                <span class="text-xs font-bold text-emerald-400 flex items-center gap-1.5">
+                                    <i class="fa-solid fa-clone"></i> Cloned Graph (In-Memory)
+                                </span>
+                                <span class="text-[10px] text-slate-500 font-mono">[New Instances]</span>
+                            </div>
+
+                            <div class="w-full h-[220px] relative bg-slate-950/80 rounded-lg overflow-hidden flex items-center justify-center">
+                                <svg id="clonedSvg" class="w-full h-full" viewBox="0 0 320 220" preserveAspectRatio="xMidYMid meet">
+                                    <!-- Rendered dynamically -->
+                                </svg>
+                            </div>
+                        </div>
+
+                    </div>
+
+                    <!-- Graph Canvas Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 border-t border-slate-800/80 pt-3">
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-sky-950 border border-sky-400"></span> Original Node</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-emerald-950 border border-emerald-400"></span> Instantiated Clone (e.g. 1')</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3 h-3 rounded-full bg-amber-500 border border-amber-300"></span> Active DFS Traversal</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-1 bg-amber-400 rounded"></span> Cycle Back-Edge Lookup</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- HashMap Inspector & Step Narrative (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+
+                <!-- HashMap Inspector Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-database text-amber-400"></i> HashMap State Inspector
+                        </h2>
+                        <span id="mapSizeBadge" class="mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            size = 0
+                        </span>
+                    </div>
+
+                    <div class="flex flex-col gap-1.5">
+                        <span class="text-[11px] font-medium text-slate-400">visited = HashMap&lt;Node, Node&gt;:</span>
+                        <div id="hashMapContainer" class="flex flex-col gap-2 p-3 bg-slate-950 border border-slate-800 rounded-xl min-h-[90px] max-h-[160px] overflow-y-auto">
+                            <!-- Populated dynamically via JS -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Step Narrative & Intuition Callout -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Intuition &amp; Reason</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[50px]">
+                        Click Play or Next to step through how the imperative DFS algorithm clones nodes and resolves cyclic graph dependencies using the HashMap.
+                    </p>
+
+                    <!-- Cycle Explanation Callout -->
+                    <div id="cycleCallout" class="mt-auto bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 flex items-start gap-2.5">
+                        <i id="calloutIcon" class="fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5"></i>
+                        <p id="calloutText" class="text-[11px] leading-relaxed">
+                            <strong class="text-amber-300">Why `HashMap<Node, Node>`?</strong> When a neighbor has already been visited (cycle detected), we do NOT call `new Node()`. Instead, we retrieve `visited.get(neighbor)` to connect the existing clone reference safely!
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- Code Trace & Call Stack Row -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Code Trace Box (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Execution Code Trace
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">Imperative DFS Approach</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public Node cloneGraph(Node node) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6 text-rose-400">if (node == null || node.neighbors == null) return null;</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-6">Node startNode = new Node(node.val);</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-6">HashMap&lt;Node, Node&gt; visited = new HashMap&lt;&gt;();</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-6 text-cyan-300">dfs(startNode, node, visited);</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-6">return startNode;</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded">}</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded">void dfs(Node startNode, Node originalNode, HashMap&lt;Node, Node&gt; visited) {</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-400">visited.put(originalNode, startNode); // Register in map</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded pl-6">for (Node neighbor : originalNode.neighbors) {</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded pl-10 text-amber-300">if (!visited.containsKey(neighbor)) { // Unvisited Neighbor</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-14">Node deepNeighbor = new Node(neighbor.val);</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded pl-14">startNode.neighbors.add(deepNeighbor);</div>
+                        <div id="code-line-14" class="code-line px-2 py-0.5 rounded pl-14 text-cyan-300">dfs(deepNeighbor, neighbor, visited);</div>
+                        <div id="code-line-15" class="code-line px-2 py-0.5 rounded pl-10">} else { // Visited Neighbor (Cycle Detected!)</div>
+                        <div id="code-line-16" class="code-line px-2 py-0.5 rounded pl-14 text-rose-300">startNode.neighbors.add(visited.get(neighbor)); // Attach existing clone</div>
+                        <div id="code-line-17" class="code-line px-2 py-0.5 rounded pl-10">}</div>
+                        <div id="code-line-18" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-19" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call Stack Box (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 h-full">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-purple-400"></i> DFS Call Stack
+                        </h2>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </div>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[180px] overflow-y-auto pr-1">
+                        <!-- Stack items populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Preset Datasets
+        const PRESETS = [
+            {
+                name: "1. Standard 4-Node Cycle (1-2-3-4)",
+                nodes: [
+                    { val: 1, neighbors: [2, 4], x: 80, y: 60 },
+                    { val: 2, neighbors: [1, 3], x: 240, y: 60 },
+                    { val: 3, neighbors: [2, 4], x: 240, y: 160 },
+                    { val: 4, neighbors: [1, 3], x: 80, y: 160 }
+                ]
+            },
+            {
+                name: "2. Triangle with Tail (3-Node Cycle + 1 Tail)",
+                nodes: [
+                    { val: 1, neighbors: [2], x: 60, y: 110 },
+                    { val: 2, neighbors: [1, 3, 4], x: 170, y: 50 },
+                    { val: 3, neighbors: [2, 4], x: 260, y: 120 },
+                    { val: 4, neighbors: [2, 3], x: 170, y: 170 }
+                ]
+            },
+            {
+                name: "3. Linear 3-Node Graph (1-2-3)",
+                nodes: [
+                    { val: 1, neighbors: [2], x: 70, y: 110 },
+                    { val: 2, neighbors: [1, 3], x: 160, y: 110 },
+                    { val: 3, neighbors: [2], x: 250, y: 110 }
+                ]
+            },
+            {
+                name: "4. Single Isolated Node (val = 1, 0 neighbors)",
+                nodes: [
+                    { val: 1, neighbors: [], x: 160, y: 110 }
+                ]
+            },
+            {
+                name: "5. Empty Graph (null node input)",
+                nodes: []
+            }
+        ];
+
+        // State Variables
+        let currentPreset = PRESETS[0];
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1100;
+
+        // Trace Generator Algorithm for Clone Graph
+        function generateCloneGraphSteps(preset) {
+            const stepsList = [];
+            const nodes = preset.nodes;
+
+            // Empty Graph Edge Case Check
+            if (!nodes || nodes.length === 0) {
+                stepsList.push({
+                    type: 'EMPTY_GRAPH',
+                    title: 'Guard Clause Activated: null Input Graph',
+                    desc: 'Input node is null. Returning null directly without instantiating dummy nodes.',
+                    activeOriginalVal: null,
+                    activeCloneVal: null,
+                    activeNeighborVal: null,
+                    clonedNodes: [],
+                    clonedEdges: [],
+                    hashMap: new Map(),
+                    stack: [],
+                    codeLine: 2
+                });
+                return stepsList;
+            }
+
+            const hashMap = new Map(); // originalVal -> clonedVal
+            const clonedNodes = []; // list of val
+            const clonedEdges = []; // list of "fromVal-toVal"
+            const stack = [];
+
+            // Step 1: Start Initialization
+            const rootVal = nodes[0].val;
+            clonedNodes.push(rootVal);
+
+            stepsList.push({
+                type: 'START',
+                title: `Step 1: Instantiate Root Clone Node ${rootVal}'`,
+                desc: `Created new Node(${rootVal}) in memory as 'startNode'. Initialized empty HashMap<Node, Node>.`,
+                activeOriginalVal: rootVal,
+                activeCloneVal: rootVal,
+                activeNeighborVal: null,
+                clonedNodes: [...clonedNodes],
+                clonedEdges: [...clonedEdges],
+                hashMap: new Map(hashMap),
+                stack: [],
+                codeLine: 4
+            });
+
+            function getOriginalNode(val) {
+                return nodes.find(n => n.val === val);
+            }
+
+            function dfsTrace(cloneVal, originalVal) {
+                stack.push({ cloneVal, originalVal });
+
+                // Register in HashMap
+                hashMap.set(originalVal, cloneVal);
+
+                stepsList.push({
+                    type: 'REGISTER_MAP',
+                    title: `DFS Enter: Map original Node ${originalVal} -> Clone Node ${cloneVal}'`,
+                    desc: `Executed visited.put(Node ${originalVal}, Node ${cloneVal}'). Registering mapping before neighbor iteration to catch cyclic back-edges!`,
+                    activeOriginalVal: originalVal,
+                    activeCloneVal: cloneVal,
+                    activeNeighborVal: null,
+                    clonedNodes: [...clonedNodes],
+                    clonedEdges: [...clonedEdges],
+                    hashMap: new Map(hashMap),
+                    stack: [...stack],
+                    codeLine: 9
+                });
+
+                const origNode = getOriginalNode(originalVal);
+                const neighbors = origNode ? origNode.neighbors : [];
+
+                for (let i = 0; i < neighbors.length; i++) {
+                    const neighborVal = neighbors[i];
+
+                    // Check if neighbor is unvisited
+                    const isVisited = hashMap.has(neighborVal);
+
+                    if (!isVisited) {
+                        // Unvisited Choice
+                        clonedNodes.push(neighborVal);
+                        clonedEdges.push(`${cloneVal}-${neighborVal}`);
+
+                        stepsList.push({
+                            type: 'UNVISITED_NEIGHBOR',
+                            title: `Unvisited Neighbor Node ${neighborVal}: Instantiate Clone ${neighborVal}'`,
+                            desc: `Node ${neighborVal} is NOT in HashMap. Created new Node(${neighborVal}') and attached edge: ${cloneVal}' -> ${neighborVal}'. Recursing into dfs(${neighborVal}')...`,
+                            activeOriginalVal: originalVal,
+                            activeCloneVal: cloneVal,
+                            activeNeighborVal: neighborVal,
+                            clonedNodes: [...clonedNodes],
+                            clonedEdges: [...clonedEdges],
+                            hashMap: new Map(hashMap),
+                            stack: [...stack],
+                            codeLine: 12
+                        });
+
+                        dfsTrace(neighborVal, neighborVal);
+
+                    } else {
+                        // Visited Choice (Cycle Handling!)
+                        clonedEdges.push(`${cloneVal}-${neighborVal}`);
+
+                        stepsList.push({
+                            type: 'VISITED_NEIGHBOR',
+                            title: `⚡ Cycle Detected! Neighbor Node ${neighborVal} Already Visited!`,
+                            desc: `Neighbor ${neighborVal} is ALREADY inside HashMap! Instead of calling new Node(), we retrieve visited.get(Node ${neighborVal}) = Node ${neighborVal}' and attach edge: ${cloneVal}' -> ${neighborVal}'.`,
+                            activeOriginalVal: originalVal,
+                            activeCloneVal: cloneVal,
+                            activeNeighborVal: neighborVal,
+                            isCycle: true,
+                            clonedNodes: [...clonedNodes],
+                            clonedEdges: [...clonedEdges],
+                            hashMap: new Map(hashMap),
+                            stack: [...stack],
+                            codeLine: 16
+                        });
+                    }
+                }
+
+                stepsList.push({
+                    type: 'DFS_RETURN',
+                    title: `DFS Frame Complete for Node ${originalVal}`,
+                    desc: `Finished processing all neighbors for Node ${originalVal}. Returning back up call stack...`,
+                    activeOriginalVal: originalVal,
+                    activeCloneVal: cloneVal,
+                    activeNeighborVal: null,
+                    clonedNodes: [...clonedNodes],
+                    clonedEdges: [...clonedEdges],
+                    hashMap: new Map(hashMap),
+                    stack: [...stack],
+                    codeLine: 18
+                });
+
+                stack.pop();
+            }
+
+            dfsTrace(rootVal, rootVal);
+
+            // Finish Step
+            stepsList.push({
+                type: 'FINISH',
+                title: 'Graph Deep Copy Complete! 🎉',
+                desc: `Successfully duplicated all ${nodes.length} nodes and their interconnected edges! Returned reference to startNode (${rootVal}').`,
+                activeOriginalVal: null,
+                activeCloneVal: null,
+                activeNeighborVal: null,
+                clonedNodes: [...clonedNodes],
+                clonedEdges: [...clonedEdges],
+                hashMap: new Map(hashMap),
+                stack: [],
+                codeLine: 6
+            });
+
+            return stepsList;
+        }
+
+        // Render Step State
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Controls
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Step Header & Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Status Badge
+            const statusBadge = document.getElementById('statusBadge');
+            if (step.type === 'FINISH') {
+                statusBadge.innerText = 'Cloning Complete';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+            } else if (step.isCycle) {
+                statusBadge.innerText = '⚡ Cycle Handling';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/40 pulse-amber';
+            } else {
+                statusBadge.innerText = 'DFS Exploring';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+            }
+
+            // HashMap Inspector Rendering
+            const hashMapContainer = document.getElementById('hashMapContainer');
+            document.getElementById('mapSizeBadge').innerText = `size = ${step.hashMap.size}`;
+
+            if (step.hashMap.size === 0) {
+                hashMapContainer.innerHTML = `<span class="text-xs text-slate-500 italic text-center py-2">Map is empty { }</span>`;
+            } else {
+                let mapHtml = '';
+                step.hashMap.forEach((cloneVal, origVal) => {
+                    const isTargetLookup = (step.isCycle && step.activeNeighborVal === origVal);
+
+                    mapHtml += `
+                        <div class="p-2 rounded-xl border ${isTargetLookup ? 'bg-amber-950/60 border-amber-400 text-amber-200 pulse-amber' : 'bg-slate-900 border-slate-800 text-slate-300'} font-mono text-xs flex items-center justify-between shadow-sm">
+                            <span class="flex items-center gap-2">
+                                <span class="px-2 py-0.5 rounded bg-sky-950 text-sky-300 border border-sky-500/40 font-bold">Node ${origVal}</span>
+                                <i class="fa-solid fa-arrow-right text-[10px] text-slate-500"></i>
+                                <span class="px-2 py-0.5 rounded bg-emerald-950 text-emerald-300 border border-emerald-500/40 font-bold">Node ${cloneVal}'</span>
+                            </span>
+                            <span class="text-[10px] text-slate-400">
+                                ${isTargetLookup ? '⚡ HIT!' : 'mapped'}
+                            </span>
+                        </div>
+                    `;
+                });
+                hashMapContainer.innerHTML = mapHtml;
+            }
+
+            // Intuition Callout Text
+            const calloutText = document.getElementById('calloutText');
+            const calloutIcon = document.getElementById('calloutIcon');
+
+            if (step.isCycle) {
+                calloutIcon.className = 'fa-solid fa-triangle-exclamation text-amber-400 text-sm mt-0.5';
+                calloutText.innerHTML = `<strong class="text-amber-300">⚡ CYCLE BACK-EDGE DETECTED!</strong> Neighbor Node ${step.activeNeighborVal} was found in the HashMap! Instead of calling <code class="mono text-rose-300">new Node()</code>, we retrieve <code class="mono text-amber-300">visited.get(Node ${step.activeNeighborVal})</code> = Node ${step.activeNeighborVal}' and attach it cleanly.`;
+            } else {
+                calloutIcon.className = 'fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5';
+                calloutText.innerHTML = `<strong class="text-amber-300">Why ` + "`HashMap<Node, Node>`" + `?</strong> When a neighbor has already been visited (cycle detected), we do NOT call ` + "`new Node()`" + `. Instead, we retrieve ` + "`visited.get(neighbor)`" + ` to connect the existing clone reference safely!`;
+            }
+
+            // Code Line Highlighting
+            for (let i = 1; i <= 19; i++) {
+                const line = document.getElementById(`code-line-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((frame, depth) => `
+                    <div class="p-2 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-purple-950/40 border-purple-500/60 text-purple-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-purple-400' : 'bg-slate-600'}"></span>
+                            dfs(clone:${frame.cloneVal}', orig:${frame.originalVal})
+                        </span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            depth: ${depth + 1}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Render SVG Graphs
+            renderDualSvgs(step);
+        }
+
+        // Render SVG Canvas Displays
+        function renderDualSvgs(step) {
+            const origSvg = document.getElementById('originalSvg');
+            const cloneSvg = document.getElementById('clonedSvg');
+            const nodes = currentPreset.nodes;
+
+            if (!nodes || nodes.length === 0) {
+                origSvg.innerHTML = `<text x="160" y="110" text-anchor="middle" fill="#64748b" font-family="Fira Code, monospace" font-size="12">null (Empty Graph)</text>`;
+                cloneSvg.innerHTML = `<text x="160" y="110" text-anchor="middle" fill="#64748b" font-family="Fira Code, monospace" font-size="12">null (Empty Graph)</text>`;
+                return;
+            }
+
+            // 1. Draw Original Graph
+            let origEdgesSvg = '';
+            let origNodesSvg = '';
+
+            // Edges
+            nodes.forEach(node => {
+                node.neighbors.forEach(nVal => {
+                    const neighborNode = nodes.find(n => n.val === nVal);
+                    if (neighborNode && node.val < nVal) { // undirected single line render
+                        const isActiveEdge = (step.activeOriginalVal === node.val && step.activeNeighborVal === nVal) ||
+                                           (step.activeOriginalVal === nVal && step.activeNeighborVal === node.val);
+
+                        origEdgesSvg += `
+                            <line x1="${node.x}" y1="${node.y}" x2="${neighborNode.x}" y2="${neighborNode.y}"
+                                  stroke="${isActiveEdge ? '#f59e0b' : '#334155'}" stroke-width="${isActiveEdge ? '3' : '1.5'}" class="graph-edge" />
+                        `;
+                    }
+                });
+            });
+
+            // Nodes
+            nodes.forEach(node => {
+                const isActive = (step.activeOriginalVal === node.val);
+                const isNeighbor = (step.activeNeighborVal === node.val);
+
+                let fill = '#0f172a';
+                let stroke = '#38bdf8';
+                let textColor = '#e0f2fe';
+
+                if (isActive) {
+                    fill = '#b45309';
+                    stroke = '#f59e0b';
+                    textColor = '#ffffff';
+                } else if (isNeighbor) {
+                    fill = '#1e1b4b';
+                    stroke = '#a855f7';
+                    textColor = '#f3e8ff';
+                }
+
+                origNodesSvg += `
+                    <g class="graph-node-group" transform="translate(${node.x}, ${node.y})">
+                        <circle r="18" fill="${fill}" stroke="${stroke}" stroke-width="${isActive ? '3' : '2'}" />
+                        <text y="4" text-anchor="middle" font-family="Fira Code, monospace" font-size="12" font-weight="bold" fill="${textColor}">
+                            ${node.val}
+                        </text>
+                    </g>
+                `;
+            });
+
+            origSvg.innerHTML = `${origEdgesSvg}${origNodesSvg}`;
+
+            // 2. Draw Cloned Graph
+            let cloneEdgesSvg = '';
+            let cloneNodesSvg = '';
+
+            // Cloned Edges
+            step.clonedEdges.forEach(edgeKey => {
+                const [fromVal, toVal] = edgeKey.split('-').map(Number);
+                const fromNode = nodes.find(n => n.val === fromVal);
+                const toNode = nodes.find(n => n.val === toVal);
+
+                if (fromNode && toNode) {
+                    const isActiveEdge = (step.activeCloneVal === fromVal && step.activeNeighborVal === toVal) ||
+                                       (step.activeCloneVal === toVal && step.activeNeighborVal === fromVal);
+
+                    cloneEdgesSvg += `
+                        <line x1="${fromNode.x}" y1="${fromNode.y}" x2="${toNode.x}" y2="${toNode.y}"
+                              stroke="${isActiveEdge ? '#f59e0b' : '#10b981'}" stroke-width="${isActiveEdge ? '3' : '2'}" class="graph-edge" />
+                    `;
+                }
+            });
+
+            // Cloned Nodes
+            step.clonedNodes.forEach(cVal => {
+                const node = nodes.find(n => n.val === cVal);
+                if (!node) return;
+
+                const isActive = (step.activeCloneVal === cVal);
+
+                let fill = '#064e3b';
+                let stroke = '#34d399';
+                let textColor = '#ecfdf5';
+
+                if (isActive) {
+                    fill = '#b45309';
+                    stroke = '#f59e0b';
+                    textColor = '#ffffff';
+                }
+
+                cloneNodesSvg += `
+                    <g class="graph-node-group" transform="translate(${node.x}, ${node.y})">
+                        <circle r="18" fill="${fill}" stroke="${stroke}" stroke-width="${isActive ? '3' : '2'}" />
+                        <text y="4" text-anchor="middle" font-family="Fira Code, monospace" font-size="11" font-weight="bold" fill="${textColor}">
+                            ${cVal}'
+                        </text>
+                    </g>
+                `;
+            });
+
+            cloneSvg.innerHTML = `${cloneEdgesSvg}${cloneNodesSvg}`;
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            currentPreset = PRESETS[presetIdx];
+
+            steps = generateCloneGraphSteps(currentPreset);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'SELECT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+        }
+
+        function initApp() {
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
