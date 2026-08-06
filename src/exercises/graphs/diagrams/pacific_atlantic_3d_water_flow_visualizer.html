@@ -1,0 +1,1095 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pacific Atlantic Water Flow - 3D Reverse Uphill DFS Visualizer</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter & Fira Code -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Three.js CDN -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- OrbitControls for Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.2);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .glass-panel {
+            background: rgba(15, 23, 42, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(51, 65, 85, 0.6);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #020617;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+        canvas {
+            outline: none;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <!-- Header -->
+    <header class="border-b border-slate-800/80 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950/50">
+                    <i class="fa-solid fa-mountain-sun text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Pacific Atlantic Water Flow
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">
+                            3D Reverse Uphill DFS
+                        </span>
+                    </h1>
+                    <p class="text-xs text-slate-400">3D Voxel Terrain: Tracing ocean water UPHILL ($\text{height} \ge \text{prevHeight}$) from borders</p>
+                </div>
+            </div>
+
+            <!-- Presets & Camera Angle Controls -->
+            <div class="flex items-center gap-3 w-full md:w-auto flex-wrap justify-center">
+                <!-- Preset Dropdown -->
+                <div class="relative flex-1 md:w-64">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Standard 5x5 Matrix (LeetCode Example)</option>
+                        <option value="1">2. Central Mountain Peak (Outward Flow)</option>
+                        <option value="2">3. Diagonal Divide Ridge</option>
+                        <option value="3">4. Plateau & Central Canyon</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+
+                <!-- Camera Angle Buttons -->
+                <div class="flex bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
+                    <button id="camIsoBtn" title="Isometric 3D View" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950 flex items-center gap-1">
+                        <i class="fa-solid fa-cube text-[10px]"></i> 3D Iso
+                    </button>
+                    <button id="camTopBtn" title="Top-Down 2D View" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center gap-1">
+                        <i class="fa-solid fa-table-cells text-[10px]"></i> Top 2D
+                    </button>
+                    <button id="camSideBtn" title="Front Elevation View" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center gap-1">
+                        <i class="fa-solid fa-eye text-[10px]"></i> Front
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Controls Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Step Control Buttons -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Scrub Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Control & Auto-Rotate -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <button id="autoRotateBtn" class="px-3 py-1.5 bg-slate-800 border border-slate-700 hover:bg-slate-700 text-slate-300 text-xs rounded-lg transition-all flex items-center gap-1.5">
+                    <i class="fa-solid fa-arrows-spin text-cyan-400"></i> Auto-Rotate: Off
+                </button>
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1600">0.5x Speed</option>
+                        <option value="900" selected>1.0x Speed</option>
+                        <option value="450">2.0x Speed</option>
+                        <option value="200">3.5x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- Main Content Area: 3D Viewport & Narrative Panels -->
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: 3D Viewport Workspace (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+
+                <!-- 3D Canvas Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 relative min-h-[440px] overflow-hidden">
+                    <div class="flex items-center justify-between border-b border-slate-800/80 pb-3">
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                                <i class="fa-solid fa-cubes text-cyan-400"></i> 3D Elevation Terrain & Ocean Water Simulation
+                            </h2>
+                        </div>
+
+                        <!-- View Mode Badges -->
+                        <div class="flex bg-slate-950 border border-slate-800 rounded-xl p-1 gap-1">
+                            <button id="viewMergedBtn" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950">
+                                Merged Flow
+                            </button>
+                            <button id="viewPacBtn" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
+                                Pacific
+                            </button>
+                            <button id="viewAtlBtn" class="px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200">
+                                Atlantic
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- 3D Canvas Container -->
+                    <div id="canvas3DContainer" class="w-full h-[380px] lg:h-[420px] relative bg-slate-950 rounded-xl overflow-hidden cursor-grab active:cursor-grabbing border border-slate-800/60">
+                        <!-- Three.js Canvas injected here -->
+
+                        <!-- Floating Canvas Controls Helper -->
+                        <div class="absolute bottom-3 right-3 bg-slate-950/80 border border-slate-800 backdrop-blur-md px-3 py-1.5 rounded-lg text-[10px] text-slate-400 pointer-events-none flex items-center gap-2">
+                            <span><i class="fa-solid fa-mouse text-cyan-400"></i> Left Click + Drag: Rotate</span>
+                            <span>|</span>
+                            <span><i class="fa-solid fa-arrows-up-down-left-right text-cyan-400"></i> Right Click: Pan</span>
+                            <span>|</span>
+                            <span><i class="fa-solid fa-magnifying-glass text-cyan-400"></i> Scroll: Zoom</span>
+                        </div>
+                    </div>
+
+                    <!-- 3D Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 border-t border-slate-800/80 pt-3">
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-cyan-500/30 border border-cyan-400"></span> Pacific Reachable (`pac`)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-purple-500/30 border border-purple-400"></span> Atlantic Reachable (`atl`)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-emerald-500/40 border-2 border-emerald-400 shadow-sm shadow-emerald-500"></span> BOTH Overlap Match</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded bg-amber-500 border border-amber-300"></span> Active DFS Cursor</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Narrative, Java Code Trace & Overlaps (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+
+                <!-- Step Narrative & Intuition Spotlight -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-circle-info text-cyan-400 mr-1"></i> Step Narrative</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[45px]">
+                        Click Play or Next to step through the reverse uphill DFS traversal in 3D.
+                    </p>
+
+                    <!-- Intuition Spotlight Box -->
+                    <div id="spotlightExplanation" class="bg-slate-950 border border-amber-500/20 rounded-xl p-3 text-xs text-slate-300 space-y-1">
+                        <p class="text-[11px] leading-relaxed">
+                            <strong class="text-amber-300">Why Uphill (`heights[r][c] &ge; prevHeight`)?</strong> Water flows downhill ($\text{High} \rightarrow \text{Low}$). Walking backwards from the ocean edges means we can only step UPHILL ($\text{Low} \rightarrow \text{High}$).
+                        </p>
+                    </div>
+                </div>
+
+                <!-- Java Code Trace Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Code Line Trace
+                        </h2>
+                        <span class="mono text-[10px] text-cyan-300 font-bold">Reverse Flow DFS</span>
+                    </div>
+
+                    <div id="codeTrace" class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300 max-h-[220px] overflow-y-auto">
+                        <div id="code-1" class="code-line px-2 py-0.5 rounded">public List&lt;List&lt;Integer&gt;&gt; pacificAtlantic(int[][] heights) {</div>
+                        <div id="code-2" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 2D boolean matrices track reachability</div>
+                        <div id="code-3" class="code-line px-2 py-0.5 rounded pl-6">boolean[][] pac = new boolean[rows][cols];</div>
+                        <div id="code-4" class="code-line px-2 py-0.5 rounded pl-6">boolean[][] atl = new boolean[rows][cols];</div>
+                        <div id="code-5" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">// 1. Seed Top (Pac) &amp; Bottom (Atl) Borders</div>
+                        <div id="code-6" class="code-line px-2 py-0.5 rounded pl-6">for (c...) { dfs(0, c, pac, heights[0][c]); dfs(rows-1, c, atl, ...); }</div>
+                        <div id="code-7" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">// 2. Seed Left (Pac) &amp; Right (Atl) Borders</div>
+                        <div id="code-8" class="code-line px-2 py-0.5 rounded pl-6">for (r...) { dfs(r, 0, pac, heights[r][0]); dfs(r, cols-1, atl, ...); }</div>
+                        <div id="code-9" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-400">// 3. Overlap Check: Both pac &amp;&amp; atl == true</div>
+                        <div id="code-10" class="code-line px-2 py-0.5 rounded pl-6">for (r...) for (c...) if (pac[r][c] &amp;&amp; atl[r][c]) result.add(...);</div>
+                        <div id="code-11" class="code-line px-2 py-0.5 rounded">}</div>
+                        <div id="code-12" class="code-line px-2 py-0.5 rounded text-cyan-300">void dfs(r, c, visited, prevHeight, heights) {</div>
+                        <div id="code-13" class="code-line px-2 py-0.5 rounded pl-6 text-rose-400">if (outOfBounds || visited[r][c] || heights[r][c] &lt; prevHeight)</div>
+                        <div id="code-14" class="code-line px-2 py-0.5 rounded pl-10 text-rose-400">return; // DOWNHILL STEP REJECTED!</div>
+                        <div id="code-15" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-300">visited[r][c] = true; // Mark ocean reachable</div>
+                        <div id="code-16" class="code-line px-2 py-0.5 rounded pl-6">dfs(r + 1, c, visited, heights[r][c], heights); // Down</div>
+                        <div id="code-17" class="code-line px-2 py-0.5 rounded pl-6">dfs(r - 1, c, visited, heights[r][c], heights); // Up</div>
+                        <div id="code-18" class="code-line px-2 py-0.5 rounded pl-6">dfs(r, c + 1, visited, heights[r][c], heights); // Right</div>
+                        <div id="code-19" class="code-line px-2 py-0.5 rounded pl-6">dfs(r, c - 1, visited, heights[r][c], heights); // Left</div>
+                        <div id="code-20" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+
+                <!-- Overlap Results Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-emerald-400 flex items-center gap-2">
+                            <i class="fa-solid fa-square-check"></i> Overlapping Cells (`pac` &amp;&amp; `atl`)
+                        </h2>
+                        <span id="overlapCountBadge" class="mono text-[11px] px-2.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            0 Cells
+                        </span>
+                    </div>
+
+                    <div id="overlapListContainer" class="flex flex-wrap gap-2 p-2.5 bg-slate-950 border border-slate-800 rounded-xl min-h-[48px] max-h-[90px] overflow-y-auto">
+                        <!-- Populated via JS -->
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <script>
+        // Preset Datasets
+        const PRESETS = [
+            {
+                name: "1. Standard 5x5 Matrix (LeetCode Example)",
+                grid: [
+                    [1, 2, 2, 3, 5],
+                    [3, 2, 3, 4, 4],
+                    [2, 4, 5, 3, 1],
+                    [6, 7, 1, 4, 5],
+                    [5, 1, 1, 2, 4]
+                ]
+            },
+            {
+                name: "2. Central Mountain Peak (Outward Flow)",
+                grid: [
+                    [1, 2, 3, 2, 1],
+                    [2, 5, 7, 5, 2],
+                    [3, 7, 9, 7, 3],
+                    [2, 5, 7, 5, 2],
+                    [1, 2, 3, 2, 1]
+                ]
+            },
+            {
+                name: "3. Diagonal Divide Ridge",
+                grid: [
+                    [1, 2, 3, 4, 5],
+                    [2, 3, 4, 5, 6],
+                    [3, 4, 5, 6, 7],
+                    [4, 5, 6, 7, 8],
+                    [5, 6, 7, 8, 9]
+                ]
+            },
+            {
+                name: "4. Plateau & Central Canyon",
+                grid: [
+                    [8, 8, 8, 8, 8],
+                    [8, 2, 2, 2, 8],
+                    [8, 2, 1, 2, 8],
+                    [8, 2, 2, 2, 8],
+                    [8, 8, 8, 8, 8]
+                ]
+            }
+        ];
+
+        // Global State
+        let currentGrid = PRESETS[0].grid;
+        let activeViewMode = 'MERGED'; // 'MERGED', 'PACIFIC', 'ATLANTIC'
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 900;
+        let isAutoRotate = false;
+
+        // Three.js Scene Variables
+        let scene, camera, renderer, controls;
+        let pillarGroup = new THREE.Group();
+        let oceanPacMesh, oceanAtlMesh;
+        let activeCursorMesh;
+        let pillarMap = new Map(); // "r-c" -> { mesh, labelSprite, defaultY, heightVal }
+
+        function clone2D(matrix) {
+            return matrix.map(row => [...row]);
+        }
+
+        // Trace Generator Algorithm for Pacific Atlantic DFS
+        function generatePacificAtlanticSteps(heights) {
+            const stepsList = [];
+            const rows = heights.length;
+            const cols = heights[0].length;
+
+            const pac = Array.from({ length: rows }, () => Array(cols).fill(false));
+            const atl = Array.from({ length: rows }, () => Array(cols).fill(false));
+
+            // Step 0: Start
+            stepsList.push({
+                type: 'INIT',
+                title: 'Step 1: Initialize Pacific & Atlantic Boolean Matrices',
+                desc: `Created 2D boolean matrices pac[${rows}][${cols}] and atl[${rows}][${cols}]. Using boolean[][] avoids Java HashSet<int[]> reference equality bugs!`,
+                heights: heights,
+                pac: clone2D(pac),
+                atl: clone2D(atl),
+                activeNode: null,
+                activeOcean: null,
+                codeLine: 3,
+                explanation: `Why boolean[][] instead of HashSet<int[]>? In Java, new int[]{1,2}.equals(new int[]{1,2}) is FALSE because arrays check memory address identity, not value equality! boolean[][] gives O(1) direct indexing.`
+            });
+
+            // DFS Trace Helper
+            function dfsTrace(r, c, oceanMap, oceanName, prevHeight) {
+                // Out of bounds check
+                if (r < 0 || r >= rows || c < 0 || c >= cols) {
+                    stepsList.push({
+                        type: 'DFS_REJECT_BOUNDS',
+                        title: `DFS (${r}, ${c}) [${oceanName}] -> Out of Bounds`,
+                        desc: `Cell (${r}, ${c}) is outside grid dimensions. Returning from branch.`,
+                        heights: heights,
+                        pac: clone2D(pac),
+                        atl: clone2D(atl),
+                        activeNode: { r, c },
+                        activeOcean: oceanName,
+                        codeLine: 13,
+                        explanation: `Boundary guard clause triggered.`
+                    });
+                    return;
+                }
+
+                // Already visited check
+                if (oceanMap[r][c]) {
+                    stepsList.push({
+                        type: 'DFS_REJECT_VISITED',
+                        title: `DFS (${r}, ${c}) [${oceanName}] -> Already Reached`,
+                        desc: `Cell (${r}, ${c}) was already marked true for ${oceanName}. Skipping redundant work.`,
+                        heights: heights,
+                        pac: clone2D(pac),
+                        atl: clone2D(atl),
+                        activeNode: { r, c },
+                        activeOcean: oceanName,
+                        codeLine: 13,
+                        explanation: `Already marked reachable from ${oceanName}.`
+                    });
+                    return;
+                }
+
+                // Height check: UPHILL condition (heights[r][c] >= prevHeight)
+                const currHeight = heights[r][c];
+                if (currHeight < prevHeight) {
+                    stepsList.push({
+                        type: 'DFS_REJECT_DOWNHILL',
+                        title: `DFS (${r}, ${c}) [${oceanName}] -> Rejection: Downhill Step!`,
+                        desc: `heights[${r}][${c}] (${currHeight}) < prevHeight (${prevHeight}). Water flows downhill, so walking UPHILL from ocean requires height >= prevHeight. Step rejected!`,
+                        heights: heights,
+                        pac: clone2D(pac),
+                        atl: clone2D(atl),
+                        activeNode: { r, c },
+                        activeOcean: oceanName,
+                        codeLine: 14,
+                        explanation: `⚡ UPHILL RULE REJECTION: heights[${r}][${c}] (${currHeight}) < prevHeight (${prevHeight}). Water cannot flow downhill from (${r}, ${c}) to height ${prevHeight}!`
+                    });
+                    return;
+                }
+
+                // Accept & Mark
+                oceanMap[r][c] = true;
+
+                stepsList.push({
+                    type: 'DFS_ACCEPT',
+                    title: `DFS (${r}, ${c}) [${oceanName}] -> Mark ${oceanName} Reachable!`,
+                    desc: `heights[${r}][${c}] (${currHeight}) >= prevHeight (${prevHeight}). Set ${oceanName}[${r}][${c}] = true!`,
+                    heights: heights,
+                    pac: clone2D(pac),
+                    atl: clone2D(atl),
+                    activeNode: { r, c },
+                    activeOcean: oceanName,
+                    codeLine: 15,
+                    explanation: `✓ UPHILL MATCH: height ${currHeight} >= prevHeight ${prevHeight}. Marked ${oceanName}[${r}][${c}] = true.`
+                });
+
+                // Recurse 4 directions
+                const directions = [
+                    { dr: 1, dc: 0, label: 'Down' },
+                    { dr: -1, dc: 0, label: 'Up' },
+                    { dr: 0, dc: 1, label: 'Right' },
+                    { dr: 0, dc: -1, label: 'Left' }
+                ];
+
+                directions.forEach(d => {
+                    const nr = r + d.dr;
+                    const nc = c + d.dc;
+
+                    stepsList.push({
+                        type: 'DFS_RECURSE',
+                        title: `DFS (${r}, ${c}) [${oceanName}] -> Recurse ${d.label} to (${nr}, ${nc})`,
+                        desc: `Exploring neighbor (${nr}, ${nc}) with current height ${currHeight} as next prevHeight.`,
+                        heights: heights,
+                        pac: clone2D(pac),
+                        atl: clone2D(atl),
+                        activeNode: { r, c },
+                        activeOcean: oceanName,
+                        codeLine: 16,
+                        explanation: `Calling dfs(${nr}, ${nc}) [${d.label}] with prevHeight = ${currHeight}.`
+                    });
+
+                    dfsTrace(nr, nc, oceanMap, oceanName, currHeight);
+                });
+            }
+
+            // 1. Seed Top & Bottom Borders
+            for (let c = 0; c < cols; c++) {
+                stepsList.push({
+                    type: 'SEED_TOP_BOTTOM',
+                    title: `Seed Border Column c = ${c}: Top (Pacific) & Bottom (Atlantic)`,
+                    desc: `Launching Pacific DFS from top cell (0, ${c}) and Atlantic DFS from bottom cell (${rows - 1}, ${c}).`,
+                    heights: heights,
+                    pac: clone2D(pac),
+                    atl: clone2D(atl),
+                    activeNode: { r: 0, c },
+                    activeOcean: 'PACIFIC',
+                    codeLine: 6,
+                    explanation: `Seeding Pacific (r=0) and Atlantic (r=${rows - 1}) border column ${c}.`
+                });
+
+                dfsTrace(0, c, pac, 'PACIFIC', heights[0][c]);
+                dfsTrace(rows - 1, c, atl, 'ATLANTIC', heights[rows - 1][c]);
+            }
+
+            // 2. Seed Left & Right Borders
+            for (let r = 0; r < rows; r++) {
+                stepsList.push({
+                    type: 'SEED_LEFT_RIGHT',
+                    title: `Seed Border Row r = ${r}: Left (Pacific) & Right (Atlantic)`,
+                    desc: `Launching Pacific DFS from left cell (${r}, 0) and Atlantic DFS from right cell (${r}, ${cols - 1}).`,
+                    heights: heights,
+                    pac: clone2D(pac),
+                    atl: clone2D(atl),
+                    activeNode: { r, c: 0 },
+                    activeOcean: 'PACIFIC',
+                    codeLine: 8,
+                    explanation: `Seeding Pacific (c=0) and Atlantic (c=${cols - 1}) border row ${r}.`
+                });
+
+                dfsTrace(r, 0, pac, 'PACIFIC', heights[r][0]);
+                dfsTrace(r, cols - 1, atl, 'ATLANTIC', heights[r][cols - 1]);
+            }
+
+            // 3. Overlap Scan
+            const overlapMatches = [];
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (pac[r][c] && atl[r][c]) {
+                        overlapMatches.push({ r, c });
+                    }
+                }
+            }
+
+            stepsList.push({
+                type: 'FINISH_OVERLAP',
+                title: 'Traversals Complete! Final Overlap Scan',
+                desc: `Scanned pac and atl matrices. Found ${overlapMatches.length} cell(s) where pac[r][c] == true AND atl[r][c] == true!`,
+                heights: heights,
+                pac: clone2D(pac),
+                atl: clone2D(atl),
+                activeNode: null,
+                activeOcean: null,
+                overlapMatches,
+                codeLine: 10,
+                explanation: `🎉 OVERLAP COMPLETE: Found ${overlapMatches.length} cells that can flow into BOTH Pacific and Atlantic oceans!`
+            });
+
+            return stepsList;
+        }
+
+        // Helper to generate a text texture for numbers on top of 3D Voxels
+        function createTextCanvasTexture(text) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 128;
+            canvas.height = 128;
+            const ctx = canvas.getContext('2d');
+
+            ctx.fillStyle = '#0f172a';
+            ctx.fillRect(0, 0, 128, 128);
+
+            ctx.lineWidth = 8;
+            ctx.strokeStyle = '#334155';
+            ctx.strokeRect(4, 4, 120, 128);
+
+            ctx.font = 'bold 54px "Fira Code", monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillStyle = '#f8fafc';
+            ctx.fillText(text, 64, 64);
+
+            const texture = new THREE.CanvasTexture(canvas);
+            return texture;
+        }
+
+        // Initialize Three.js 3D Engine
+        function init3DScene() {
+            const container = document.getElementById('canvas3DContainer');
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x020617);
+
+            // Camera Setup
+            camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+            camera.position.set(12, 16, 16);
+
+            // Renderer Setup
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(width, height);
+            renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            container.appendChild(renderer.domElement);
+
+            // OrbitControls
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = 0.05;
+            controls.maxPolarAngle = Math.PI / 2 - 0.05; // Don't go below ground
+
+            // Lighting
+            const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+            scene.add(ambientLight);
+
+            const dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            dirLight.position.set(15, 25, 10);
+            dirLight.castShadow = true;
+            dirLight.shadow.mapSize.width = 1024;
+            dirLight.shadow.mapSize.height = 1024;
+            scene.add(dirLight);
+
+            const pointLight = new THREE.PointLight(0x06b6d4, 1.2, 30);
+            pointLight.position.set(0, 10, 0);
+            scene.add(pointLight);
+
+            // Active Cursor Cylinder Indicator
+            const cursorGeo = new THREE.CylinderGeometry(0.5, 0.5, 0.1, 16);
+            const cursorMat = new THREE.MeshBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.8 });
+            activeCursorMesh = new THREE.Mesh(cursorGeo, cursorMat);
+            activeCursorMesh.visible = false;
+            scene.add(activeCursorMesh);
+
+            scene.add(pillarGroup);
+
+            window.addEventListener('resize', onWindowResize);
+            animate3D();
+        }
+
+        function onWindowResize() {
+            const container = document.getElementById('canvas3DContainer');
+            if (!container) return;
+            const width = container.clientWidth;
+            const height = container.clientHeight;
+
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+            renderer.setSize(width, height);
+        }
+
+        function build3DGrid(heights) {
+            // Clear existing pillars
+            while (pillarGroup.children.length > 0) {
+                const obj = pillarGroup.children[0];
+                pillarGroup.remove(obj);
+            }
+            pillarMap.clear();
+
+            const rows = heights.length;
+            const cols = heights[0].length;
+            const spacing = 1.2;
+
+            const offsetX = (cols * spacing) / 2 - spacing / 2;
+            const offsetZ = (rows * spacing) / 2 - spacing / 2;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const hVal = heights[r][c];
+                    const pillarHeight = hVal * 0.5 + 0.4; // height scaling
+
+                    const boxGeo = new THREE.BoxGeometry(1, pillarHeight, 1);
+
+                    // Top face texture with number
+                    const topTexture = createTextCanvasTexture(hVal.toString());
+
+                    const materials = [
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.1 }), // Right
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.1 }), // Left
+                        new THREE.MeshStandardMaterial({ map: topTexture, roughness: 0.2 }),                // Top
+                        new THREE.MeshStandardMaterial({ color: 0x0f172a }),                                 // Bottom
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.1 }), // Front
+                        new THREE.MeshStandardMaterial({ color: 0x1e293b, roughness: 0.4, metalness: 0.1 })  // Back
+                    ];
+
+                    const mesh = new THREE.Mesh(boxGeo, materials);
+                    const xPos = c * spacing - offsetX;
+                    const zPos = r * spacing - offsetZ;
+                    const yPos = pillarHeight / 2;
+
+                    mesh.position.set(xPos, yPos, zPos);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+
+                    pillarGroup.add(mesh);
+
+                    pillarMap.set(`${r}-${c}`, {
+                        mesh,
+                        materials,
+                        xPos,
+                        zPos,
+                        defaultY: yPos,
+                        pillarHeight,
+                        heightVal: hVal
+                    });
+                }
+            }
+
+            // Build Surrounding Pacific & Atlantic Oceans
+            if (oceanPacMesh) scene.remove(oceanPacMesh);
+            if (oceanAtlMesh) scene.remove(oceanAtlMesh);
+
+            const oceanSize = Math.max(rows, cols) * spacing + 6;
+
+            // Pacific Ocean Plane (North-West)
+            const pacGeo = new THREE.PlaneGeometry(oceanSize, oceanSize);
+            const pacMat = new THREE.MeshStandardMaterial({
+                color: 0x06b6d4,
+                transparent: true,
+                opacity: 0.55,
+                roughness: 0.1,
+                metalness: 0.8
+            });
+            oceanPacMesh = new THREE.Mesh(pacGeo, pacMat);
+            oceanPacMesh.rotation.x = -Math.PI / 2;
+            oceanPacMesh.position.set(-2, 0.2, -2);
+            scene.add(oceanPacMesh);
+
+            // Atlantic Ocean Plane (South-East)
+            const atlGeo = new THREE.PlaneGeometry(oceanSize, oceanSize);
+            const atlMat = new THREE.MeshStandardMaterial({
+                color: 0xa855f7,
+                transparent: true,
+                opacity: 0.55,
+                roughness: 0.1,
+                metalness: 0.8
+            });
+            oceanAtlMesh = new THREE.Mesh(atlGeo, atlMat);
+            oceanAtlMesh.rotation.x = -Math.PI / 2;
+            oceanAtlMesh.position.set(2, 0.18, 2);
+            scene.add(oceanAtlMesh);
+
+            // Center Camera
+            controls.target.set(0, 1.5, 0);
+            camera.position.set(offsetX * 2.8 + 5, 12, offsetZ * 2.8 + 8);
+            controls.update();
+        }
+
+        function update3DState(step) {
+            const heights = step.heights;
+            const rows = heights.length;
+            const cols = heights[0].length;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    const item = pillarMap.get(`${r}-${c}`);
+                    if (!item) continue;
+
+                    const isPac = step.pac[r][c];
+                    const isAtl = step.atl[r][c];
+                    const isBoth = (isPac && isAtl);
+
+                    const isActive = (step.activeNode && step.activeNode.r === r && step.activeNode.c === c);
+
+                    let sideColor = 0x1e293b;
+                    let emissiveColor = 0x000000;
+                    let emissiveIntensity = 0;
+
+                    if (activeViewMode === 'PACIFIC') {
+                        if (isPac) { sideColor = 0x0284c7; emissiveColor = 0x06b6d4; emissiveIntensity = 0.4; }
+                    } else if (activeViewMode === 'ATLANTIC') {
+                        if (isAtl) { sideColor = 0x7e22ce; emissiveColor = 0xa855f7; emissiveIntensity = 0.4; }
+                    } else { // MERGED VIEW
+                        if (isBoth) {
+                            sideColor = 0x059669; emissiveColor = 0x10b981; emissiveIntensity = 0.7;
+                        } else if (isPac) {
+                            sideColor = 0x0284c7; emissiveColor = 0x06b6d4; emissiveIntensity = 0.3;
+                        } else if (isAtl) {
+                            sideColor = 0x7e22ce; emissiveColor = 0xa855f7; emissiveIntensity = 0.3;
+                        }
+                    }
+
+                    if (isActive) {
+                        sideColor = 0xd97706; emissiveColor = 0xf59e0b; emissiveIntensity = 0.9;
+                    }
+
+                    // Update side materials
+                    [0, 1, 3, 4, 5].forEach(idx => {
+                        item.materials[idx].color.setHex(sideColor);
+                        item.materials[idx].emissive.setHex(emissiveColor);
+                        item.materials[idx].emissiveIntensity = emissiveIntensity;
+                    });
+                }
+            }
+
+            // Position Active Cursor Cylinder
+            if (step.activeNode) {
+                const item = pillarMap.get(`${step.activeNode.r}-${step.activeNode.c}`);
+                if (item) {
+                    activeCursorMesh.position.set(item.xPos, item.pillarHeight + 0.15, item.zPos);
+                    activeCursorMesh.visible = true;
+                }
+            } else {
+                activeCursorMesh.visible = false;
+            }
+        }
+
+        function animate3D() {
+            requestAnimationFrame(animate3D);
+
+            const time = Date.now() * 0.002;
+
+            // Subtle ocean wave animation
+            if (oceanPacMesh) oceanPacMesh.position.y = 0.2 + Math.sin(time) * 0.05;
+            if (oceanAtlMesh) oceanAtlMesh.position.y = 0.18 + Math.cos(time) * 0.05;
+
+            // Cursor pulse animation
+            if (activeCursorMesh && activeCursorMesh.visible) {
+                activeCursorMesh.rotation.y += 0.03;
+            }
+
+            if (isAutoRotate && controls) {
+                controls.autoRotate = true;
+                controls.autoRotateSpeed = 2.0;
+            } else if (controls) {
+                controls.autoRotate = false;
+            }
+
+            controls.update();
+            renderer.render(scene, camera);
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Controls
+            const progressElem = document.getElementById('stepProgress');
+            if (progressElem) progressElem.value = stepIndex;
+
+            const counterElem = document.getElementById('stepCounter');
+            if (counterElem) counterElem.innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            const firstBtn = document.getElementById('firstBtn');
+            if (firstBtn) firstBtn.disabled = (stepIndex === 0);
+
+            const prevBtn = document.getElementById('prevBtn');
+            if (prevBtn) prevBtn.disabled = (stepIndex === 0);
+
+            const nextBtn = document.getElementById('nextBtn');
+            if (nextBtn) nextBtn.disabled = (stepIndex === steps.length - 1);
+
+            const lastBtn = document.getElementById('lastBtn');
+            if (lastBtn) lastBtn.disabled = (stepIndex === steps.length - 1);
+
+            // Step Narrative
+            const titleElem = document.getElementById('stepTitle');
+            if (titleElem) titleElem.innerText = step.title;
+
+            const descElem = document.getElementById('stepDescription');
+            if (descElem) descElem.innerText = step.desc;
+
+            const tagElem = document.getElementById('stepTag');
+            if (tagElem) tagElem.innerText = step.type.replace(/_/g, ' ');
+
+            // Uncertainty Spotlight Box
+            const spotlightElem = document.getElementById('spotlightExplanation');
+            if (spotlightElem) spotlightElem.innerHTML = `<p class="text-[11px] leading-relaxed">${step.explanation}</p>`;
+
+            // Code Line Highlighting
+            for (let i = 1; i <= 20; i++) {
+                const line = document.getElementById(`code-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Overlap List Rendering
+            const overlapContainer = document.getElementById('overlapListContainer');
+            const overlapBadge = document.getElementById('overlapCountBadge');
+
+            const currentOverlaps = [];
+            const rows = step.heights.length;
+            const cols = step.heights[0].length;
+
+            for (let r = 0; r < rows; r++) {
+                for (let c = 0; c < cols; c++) {
+                    if (step.pac[r][c] && step.atl[r][c]) {
+                        currentOverlaps.push({ r, c });
+                    }
+                }
+            }
+
+            if (overlapBadge) overlapBadge.innerText = `${currentOverlaps.length} Cells`;
+
+            if (overlapContainer) {
+                if (currentOverlaps.length === 0) {
+                    overlapContainer.innerHTML = `<span class="text-xs text-slate-500 italic">No overlapping cells found yet...</span>`;
+                } else {
+                    overlapContainer.innerHTML = currentOverlaps.map(item => `
+                        <div class="px-2.5 py-1 rounded-lg bg-emerald-950/80 border border-emerald-500/50 text-emerald-300 mono text-xs font-bold flex items-center gap-1 shadow-sm">
+                            <i class="fa-solid fa-check text-[10px] text-emerald-400"></i> [${item.r}, ${item.c}]
+                        </div>
+                    `).join('');
+                }
+            }
+
+            // Update 3D Voxel Scene
+            update3DState(step);
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            currentGrid = PRESETS[presetIdx].grid;
+
+            build3DGrid(currentGrid);
+
+            steps = generatePacificAtlanticSteps(currentGrid);
+            const progressElem = document.getElementById('stepProgress');
+            if (progressElem) progressElem.max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function setViewMode(mode) {
+            activeViewMode = mode;
+
+            const viewMergedBtn = document.getElementById('viewMergedBtn');
+            if (viewMergedBtn) viewMergedBtn.className = mode === 'MERGED' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
+
+            const viewPacBtn = document.getElementById('viewPacBtn');
+            if (viewPacBtn) viewPacBtn.className = mode === 'PACIFIC' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
+
+            const viewAtlBtn = document.getElementById('viewAtlBtn');
+            if (viewAtlBtn) viewAtlBtn.className = mode === 'ATLANTIC' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-purple-600 text-white shadow-md shadow-purple-950" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200";
+
+            renderStep(currentStepIndex);
+        }
+
+        function setCameraAngle(type) {
+            const rows = currentGrid.length;
+            const cols = currentGrid[0].length;
+            const spacing = 1.2;
+            const offsetX = (cols * spacing) / 2;
+            const offsetZ = (rows * spacing) / 2;
+
+            if (type === 'ISO') {
+                camera.position.set(offsetX * 2.8 + 5, 12, offsetZ * 2.8 + 8);
+                controls.target.set(0, 1.5, 0);
+            } else if (type === 'TOP') {
+                camera.position.set(0, 18, 0.01); // top-down
+                controls.target.set(0, 0, 0);
+            } else if (type === 'SIDE') {
+                camera.position.set(0, 2, offsetZ * 3.5 + 6); // front elevation
+                controls.target.set(0, 2, 0);
+            }
+
+            controls.update();
+
+            document.getElementById('camIsoBtn').className = type === 'ISO' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950 flex items-center gap-1" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center gap-1";
+            document.getElementById('camTopBtn').className = type === 'TOP' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950 flex items-center gap-1" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center gap-1";
+            document.getElementById('camSideBtn').className = type === 'SIDE' ? "px-2.5 py-1 rounded-lg text-xs font-bold transition-all bg-cyan-600 text-white shadow-md shadow-cyan-950 flex items-center gap-1" : "px-2.5 py-1 rounded-lg text-xs font-bold transition-all text-slate-400 hover:text-slate-200 flex items-center gap-1";
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            const playIcon = document.getElementById('playIcon');
+            if (playIcon) playIcon.className = 'fa-solid fa-pause';
+            const playText = document.getElementById('playText');
+            if (playText) playText.innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            const playIcon = document.getElementById('playIcon');
+            if (playIcon) playIcon.className = 'fa-solid fa-play';
+            const playText = document.getElementById('playText');
+            if (playText) playText.innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('viewMergedBtn').addEventListener('click', () => setViewMode('MERGED'));
+            document.getElementById('viewPacBtn').addEventListener('click', () => setViewMode('PACIFIC'));
+            document.getElementById('viewAtlBtn').addEventListener('click', () => setViewMode('ATLANTIC'));
+
+            document.getElementById('camIsoBtn').addEventListener('click', () => setCameraAngle('ISO'));
+            document.getElementById('camTopBtn').addEventListener('click', () => setCameraAngle('TOP'));
+            document.getElementById('camSideBtn').addEventListener('click', () => setCameraAngle('SIDE'));
+
+            document.getElementById('autoRotateBtn').addEventListener('click', () => {
+                isAutoRotate = !isAutoRotate;
+                const btn = document.getElementById('autoRotateBtn');
+                btn.innerHTML = isAutoRotate ? `<i class="fa-solid fa-arrows-spin text-cyan-400 animate-spin"></i> Auto-Rotate: On` : `<i class="fa-solid fa-arrows-spin text-cyan-400"></i> Auto-Rotate: Off`;
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+        }
+
+        function initApp() {
+            init3DScene();
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
