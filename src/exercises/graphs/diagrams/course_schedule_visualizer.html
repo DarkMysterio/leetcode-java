@@ -1,0 +1,1040 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Course Schedule - Topological Sort & Cycle Detection Visualizer</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Fira+Code:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        mono: ['Fira Code', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #030712;
+            color: #f3f4f6;
+        }
+        .mono {
+            font-family: 'Fira Code', monospace;
+        }
+        .pulse-amber {
+            animation: pulse-amber-glow 1.5s infinite;
+        }
+        @keyframes pulse-amber-glow {
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(245, 158, 11, 0.8)); }
+            50% { filter: drop-shadow(0 0 12px rgba(245, 158, 11, 0.9)); }
+        }
+        .pulse-rose {
+            animation: pulse-rose-glow 1.2s infinite;
+        }
+        @keyframes pulse-rose-glow {
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(244, 63, 94, 0.8)); }
+            50% { filter: drop-shadow(0 0 14px rgba(244, 63, 94, 0.95)); }
+        }
+        .pulse-emerald {
+            animation: pulse-emerald-glow 1.5s infinite;
+        }
+        @keyframes pulse-emerald-glow {
+            0%, 100% { filter: drop-shadow(0 0 2px rgba(16, 185, 129, 0.8)); }
+            50% { filter: drop-shadow(0 0 12px rgba(16, 185, 129, 0.9)); }
+        }
+        .code-line {
+            transition: background-color 0.2s ease, border-color 0.2s ease;
+        }
+        .code-line.active {
+            background-color: rgba(6, 182, 212, 0.18);
+            border-left: 3.5px solid #06b6d4;
+            color: #ffffff;
+            font-weight: 600;
+        }
+        .graph-edge {
+            transition: stroke 0.35s ease, stroke-width 0.35s ease;
+        }
+        .graph-node-group {
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+        .graph-node-group:hover {
+            transform: scale(1.08);
+        }
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #0b0f19;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #1e293b;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #334155;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex flex-col bg-slate-950 text-slate-100 overflow-x-hidden">
+
+    <header class="border-b border-slate-800 bg-slate-900/90 backdrop-blur-md sticky top-0 z-40 px-4 lg:px-8 py-3">
+        <div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="p-2.5 bg-cyan-500/10 border border-cyan-500/30 rounded-xl text-cyan-400 shadow-lg shadow-cyan-950">
+                    <i class="fa-solid fa-graduation-cap text-xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold text-slate-100 tracking-tight flex items-center gap-2">
+                        Course Schedule Visualizer
+                        <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-cyan-500/20 text-cyan-300 border border-cyan-500/30">DFS Cycle Detection</span>
+                    </h1>
+                    <p class="text-xs text-slate-400">Visually understand Active Recursion Stack, Cycle Detection &amp; Memoization</p>
+                </div>
+            </div>
+
+            <!-- Presets Selector -->
+            <div class="flex items-center gap-3 w-full md:w-auto">
+                <div class="relative flex-1 md:w-80">
+                    <select id="presetSelect" class="w-full bg-slate-800 border border-slate-700 text-xs text-slate-200 rounded-lg px-3 py-2 pr-8 appearance-none focus:outline-none focus:border-cyan-500 cursor-pointer">
+                        <option value="0">1. Valid Chain: 0 &leftarrow; 1 &leftarrow; 2 (No Cycle)</option>
+                        <option value="1">2. Simple Cycle: 0 &leftarrow; 1 &leftarrow; 0 (Cycle Detected!)</option>
+                        <option value="2">3. Disconnected Graph with Hidden Cycle</option>
+                        <option value="3">4. Diamond DAG: Multiple Shared Paths (Valid)</option>
+                        <option value="4">5. Long 4-Course Circular Dependency</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
+                </div>
+                <button id="customModalBtn" class="px-3.5 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-xs text-cyan-400 font-medium rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap">
+                    <i class="fa-solid fa-pen-to-square"></i> Custom Graph
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-6 flex flex-col gap-6">
+
+        <!-- Controls Bar -->
+        <section class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col md:flex-row items-center justify-between gap-4">
+            
+            <!-- Playback Controls -->
+            <div class="flex items-center gap-2 w-full md:w-auto justify-center">
+                <button id="firstBtn" title="First Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-backward-step"></i>
+                </button>
+                <button id="prevBtn" title="Previous Step (Left Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-left"></i>
+                </button>
+                <button id="playBtn" title="Play / Pause (Space)" class="px-5 py-2.5 bg-cyan-600 hover:bg-cyan-500 text-white font-semibold rounded-xl transition-all shadow-lg shadow-cyan-950 flex items-center gap-2">
+                    <i id="playIcon" class="fa-solid fa-play"></i> <span id="playText">Play</span>
+                </button>
+                <button id="nextBtn" title="Next Step (Right Arrow)" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-chevron-right"></i>
+                </button>
+                <button id="lastBtn" title="Last Step" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed">
+                    <i class="fa-solid fa-forward-step"></i>
+                </button>
+                <button id="resetBtn" title="Reset" class="p-2.5 bg-slate-800 hover:bg-slate-700 text-cyan-400 rounded-xl transition-all ml-1">
+                    <i class="fa-solid fa-rotate-right"></i>
+                </button>
+            </div>
+
+            <!-- Progress Scrub Slider -->
+            <div class="flex items-center gap-3 w-full md:w-1/3">
+                <span id="stepCounter" class="mono text-xs text-cyan-400 font-semibold whitespace-nowrap min-w-[85px]">Step 0/0</span>
+                <input id="stepProgress" type="range" min="0" max="0" value="0" class="w-full h-2 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-cyan-500">
+            </div>
+
+            <!-- Speed Control -->
+            <div class="flex items-center gap-3 w-full md:w-auto justify-between md:justify-end">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-gauge-high text-xs text-slate-400"></i>
+                    <select id="speedSelect" class="bg-slate-800 border border-slate-700 text-xs text-slate-300 rounded-lg px-2.5 py-1.5 focus:outline-none">
+                        <option value="1800">0.5x Speed</option>
+                        <option value="1100" selected>1.0x Speed</option>
+                        <option value="500">2.0x Speed</option>
+                        <option value="250">3.5x Speed</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- LEFT COLUMN: Directed Graph SVG Canvas (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-4">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-diagram-project text-cyan-400"></i> Course Dependency Graph (`Course A` &rarr; `Prereq B`)
+                        </h2>
+                        <span id="statusBadge" class="mono text-xs font-bold px-2.5 py-0.5 rounded bg-slate-800 text-slate-300 border border-slate-700">
+                            Initializing
+                        </span>
+                    </div>
+
+                    <!-- SVG Canvas -->
+                    <div class="w-full h-[280px] sm:h-[320px] relative bg-slate-950 border border-slate-800 rounded-xl overflow-hidden flex items-center justify-center">
+                        <svg id="graphSvg" class="w-full h-full" viewBox="0 0 600 320" preserveAspectRatio="xMidYMid meet">
+                            <defs>
+                                <marker id="arrow-default" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+                                </marker>
+                                <marker id="arrow-active" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+                                </marker>
+                                <marker id="arrow-cycle" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" />
+                                </marker>
+                                <marker id="arrow-safe" viewBox="0 0 10 10" refX="22" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#10b981" />
+                                </marker>
+                            </defs>
+                            <!-- Rendered dynamically via JS -->
+                        </svg>
+                    </div>
+
+                    <!-- Canvas Node Legend -->
+                    <div class="flex flex-wrap items-center justify-center gap-4 text-[11px] text-slate-400 border-t border-slate-800/80 pt-3">
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-slate-900 border border-slate-600"></span> Unvisited Course</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-amber-500/30 border-2 border-amber-400 pulse-amber"></span> Visiting (Active Stack)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-emerald-500/30 border-2 border-emerald-400"></span> Verified Safe (Memoized)</span>
+                        <span class="flex items-center gap-1.5"><span class="w-3.5 h-3.5 rounded-full bg-rose-500/30 border-2 border-rose-400 pulse-rose"></span> Cycle Hit!</span>
+                    </div>
+
+                </div>
+
+            </div>
+
+            <!-- RIGHT COLUMN: Adjacency List Inspector & Explanation (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+
+                <!-- Adjacency List Inspector Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-database text-amber-400"></i> Adjacency List: `courses.get(c)`
+                        </h2>
+                        <span id="memoBadge" class="mono text-[10px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">
+                            HashMap&lt;Integer, List&lt;Integer&gt;&gt;
+                        </span>
+                    </div>
+
+                    <div id="adjListContainer" class="flex flex-col gap-2 p-2 bg-slate-950 border border-slate-800 rounded-xl max-h-[160px] overflow-y-auto">
+                        <!-- Populated dynamically via JS -->
+                    </div>
+                </div>
+
+                <!-- Intuition & Decision Narrative Box -->
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-5 shadow-xl flex flex-col gap-3 flex-1">
+                    <div class="flex items-center justify-between">
+                        <span id="stepTag" class="text-xs font-semibold px-2.5 py-1 rounded-md bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            Initialization
+                        </span>
+                        <span class="text-xs text-slate-400"><i class="fa-solid fa-lightbulb text-amber-400 mr-1"></i> Why this decision?</span>
+                    </div>
+
+                    <h3 id="stepTitle" class="text-base font-bold text-slate-100 mt-1">Ready to start</h3>
+                    <p id="stepDescription" class="text-xs text-slate-300 leading-relaxed min-h-[50px]">
+                        Click Play or Next to step through DFS cycle detection and watch how nodes transition between Visiting, Memoized Safe, and Cycle states.
+                    </p>
+
+                    <!-- Intuition Callout Box -->
+                    <div id="intuitionCallout" class="mt-auto bg-slate-950 border border-slate-800 rounded-xl p-3 text-xs text-slate-300 flex items-start gap-2.5">
+                        <i id="calloutIcon" class="fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5"></i>
+                        <p id="calloutText" class="text-[11px] leading-relaxed">
+                            <strong class="text-amber-300">Active Stack (`visited.contains`):</strong> Tracks courses along the current DFS call path. Re-encountering a node currently in `visited` means we walked in a circle &rarr; **CYCLE DETECTED!**
+                        </p>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+            <!-- Code Trace Box (7 cols) -->
+            <div class="lg:col-span-7 flex flex-col gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-2">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-code text-cyan-400"></i> Java Execution Code Trace
+                        </h2>
+                        <span class="mono text-[10px] text-slate-400">CourseSchedule.java</span>
+                    </div>
+
+                    <div class="mono text-[11px] leading-relaxed bg-slate-950 rounded-xl p-3 border border-slate-800/80 space-y-0.5 overflow-x-auto text-slate-300">
+                        <div id="code-line-1" class="code-line px-2 py-0.5 rounded">public boolean canFinish(int numCourses, int[][] prerequisites) {</div>
+                        <div id="code-line-2" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 1. Pre-populate map for ALL courses 0 to numCourses - 1</div>
+                        <div id="code-line-3" class="code-line px-2 py-0.5 rounded pl-6">HashMap&lt;Integer, List&lt;Integer&gt;&gt; courses = new HashMap&lt;&gt;();</div>
+                        <div id="code-line-4" class="code-line px-2 py-0.5 rounded pl-6">for (int i = 0; i &lt; numCourses; i++) courses.put(i, new ArrayList&lt;&gt;());</div>
+                        <div id="code-line-5" class="code-line px-2 py-0.5 rounded pl-6 text-slate-500">// 2. Build adjacency list</div>
+                        <div id="code-line-6" class="code-line px-2 py-0.5 rounded pl-6">for (int[] pre : prerequisites) courses.get(pre[0]).add(pre[1]);</div>
+                        <div id="code-line-7" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">// 3. Track active DFS stack</div>
+                        <div id="code-line-8" class="code-line px-2 py-0.5 rounded pl-6">HashSet&lt;Integer&gt; visited = new HashSet&lt;&gt;();</div>
+                        <div id="code-line-9" class="code-line px-2 py-0.5 rounded pl-6 text-cyan-300">// 4. Run DFS on every course</div>
+                        <div id="code-line-10" class="code-line px-2 py-0.5 rounded pl-6">for (int c = 0; c &lt; numCourses; c++) {</div>
+                        <div id="code-line-11" class="code-line px-2 py-0.5 rounded pl-10 text-rose-400">if (!dfs(c, visited, courses)) return false;</div>
+                        <div id="code-line-12" class="code-line px-2 py-0.5 rounded pl-6">} return true;</div>
+                        <div id="code-line-13" class="code-line px-2 py-0.5 rounded">}</div>
+                        <div id="code-line-14" class="code-line px-2 py-0.5 rounded text-cyan-300">boolean dfs(int currentCourse, HashSet&lt;Integer&gt; visited, Map...) {</div>
+                        <div id="code-line-15" class="code-line px-2 py-0.5 rounded pl-6 text-rose-400 font-bold">if (visited.contains(currentCourse)) return false; // CYCLE DETECTED!</div>
+                        <div id="code-line-16" class="code-line px-2 py-0.5 rounded pl-6">List&lt;Integer&gt; preMap = courses.get(currentCourse);</div>
+                        <div id="code-line-17" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-300 font-bold">if (preMap.isEmpty()) return true; // MEMOIZED SAFE / NO PREREQS</div>
+                        <div id="code-line-18" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">visited.add(currentCourse); // Add to active stack</div>
+                        <div id="code-line-19" class="code-line px-2 py-0.5 rounded pl-6">for (Integer pre : preMap) {</div>
+                        <div id="code-line-20" class="code-line px-2 py-0.5 rounded pl-10">if (!dfs(pre, visited, courses)) return false;</div>
+                        <div id="code-line-21" class="code-line px-2 py-0.5 rounded pl-6">}</div>
+                        <div id="code-line-22" class="code-line px-2 py-0.5 rounded pl-6 text-amber-300">visited.remove(currentCourse); // Backtrack active stack</div>
+                        <div id="code-line-23" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-400 font-bold">courses.put(currentCourse, new ArrayList&lt;&gt;()); // MEMOIZE SAFE</div>
+                        <div id="code-line-24" class="code-line px-2 py-0.5 rounded pl-6 text-emerald-300">return true;</div>
+                        <div id="code-line-25" class="code-line px-2 py-0.5 rounded">}</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Call Stack Box (5 cols) -->
+            <div class="lg:col-span-5 flex flex-col gap-6">
+                <div class="bg-slate-900 border border-slate-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 h-full">
+                    <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <h2 class="text-xs font-semibold uppercase tracking-wider text-slate-400 flex items-center gap-2">
+                            <i class="fa-solid fa-layer-group text-purple-400"></i> DFS Call Stack (`visited`)
+                        </h2>
+                        <span id="stackDepthBadge" class="mono text-[11px] px-2 py-0.5 rounded bg-slate-800 text-slate-300">Depth: 0</span>
+                    </div>
+
+                    <div id="callStackContainer" class="flex flex-col-reverse gap-2 max-h-[220px] overflow-y-auto pr-1">
+                        <!-- Stack items populated via JS -->
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Custom Graph Modal -->
+    <div id="customModal" class="fixed inset-0 bg-slate-950/80 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-slate-900 border border-slate-800 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4">
+            <div class="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h3 class="text-base font-bold text-slate-100 flex items-center gap-2">
+                    <i class="fa-solid fa-pen-to-square text-cyan-400"></i> Custom Graph Builder
+                </h3>
+                <button id="closeModalBtn" class="text-slate-400 hover:text-slate-200"><i class="fa-solid fa-xmark text-lg"></i></button>
+            </div>
+
+            <div class="space-y-3 text-xs">
+                <div>
+                    <label class="block text-slate-400 mb-1">Number of Courses (`numCourses`):</label>
+                    <input id="customNumCourses" type="number" min="1" max="8" value="3" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">
+                </div>
+                <div>
+                    <label class="block text-slate-400 mb-1">Prerequisites Pairs (Format: `course, prereq`, one per line):</label>
+                    <textarea id="customPrereqsText" rows="4" class="w-full bg-slate-950 border border-slate-800 rounded-lg p-2.5 mono text-slate-200 focus:outline-none focus:border-cyan-500">0, 1
+1, 2</textarea>
+                </div>
+
+                <div id="modalError" class="hidden text-rose-400 bg-rose-500/10 border border-rose-500/20 rounded-lg p-2.5 text-xs">
+                    Error message
+                </div>
+            </div>
+
+            <div class="flex items-center justify-end gap-3 pt-2">
+                <button id="cancelModalBtn" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded-xl text-xs font-medium">Cancel</button>
+                <button id="applyCustomBtn" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white rounded-xl text-xs font-semibold shadow-lg shadow-cyan-950">Apply Graph</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Preset Datasets
+        const PRESETS = [
+            {
+                name: "1. Valid Chain: 0 <- 1 <- 2 (No Cycle)",
+                numCourses: 3,
+                prerequisites: [[0, 1], [1, 2]]
+            },
+            {
+                name: "2. Simple Cycle: 0 <- 1 <- 0 (Cycle Detected!)",
+                numCourses: 2,
+                prerequisites: [[0, 1], [1, 0]]
+            },
+            {
+                name: "3. Disconnected Graph with Hidden Cycle",
+                numCourses: 5,
+                prerequisites: [[0, 1], [2, 3], [3, 4], [4, 2]]
+            },
+            {
+                name: "4. Diamond DAG: Multiple Shared Paths (Valid)",
+                numCourses: 4,
+                prerequisites: [[0, 1], [0, 2], [1, 3], [2, 3]]
+            },
+            {
+                name: "5. Long 4-Course Circular Dependency",
+                numCourses: 4,
+                prerequisites: [[0, 1], [1, 2], [2, 3], [3, 0]]
+            }
+        ];
+
+        // Global State
+        let currentPreset = PRESETS[0];
+        let steps = [];
+        let currentStepIndex = 0;
+        let isPlaying = false;
+        let playInterval = null;
+        let playSpeed = 1100;
+
+        function cloneMap(adj) {
+            const copy = {};
+            for (let k in adj) {
+                copy[k] = [...adj[k]];
+            }
+            return copy;
+        }
+
+        // Trace Generator Algorithm for Course Schedule
+        function generateCourseScheduleSteps(numCourses, prerequisites) {
+            const stepsList = [];
+
+            // 1. Pre-populate map
+            const courses = {};
+            for (let i = 0; i < numCourses; i++) {
+                courses[i] = [];
+            }
+
+            stepsList.push({
+                type: 'INIT_MAP',
+                title: 'Step 1: Pre-populate Adjacency Map for All Courses',
+                desc: `Created empty prerequisite lists for all courses 0 to ${numCourses - 1}. Pre-populating prevents NullPointerExceptions when querying independent courses!`,
+                courses: cloneMap(courses),
+                visited: new Set(),
+                safe: new Set(),
+                activeCourse: null,
+                activeEdge: null,
+                cycleFound: false,
+                stack: [],
+                codeLine: 4
+            });
+
+            // 2. Build edges
+            for (let pre of prerequisites) {
+                const c = pre[0];
+                const mustTake = pre[1];
+                courses[c].push(mustTake);
+            }
+
+            stepsList.push({
+                type: 'BUILD_EDGES',
+                title: 'Step 2: Build Directed Graph Edge Connections',
+                desc: `Mapped all ${prerequisites.length} prerequisite dependency pairs. Graph represents: course -> list of prerequisites required.`,
+                courses: cloneMap(courses),
+                visited: new Set(),
+                safe: new Set(),
+                activeCourse: null,
+                activeEdge: null,
+                cycleFound: false,
+                stack: [],
+                codeLine: 6
+            });
+
+            const visited = new Set(); // Active stack
+            const safe = new Set();    // Memoized safe
+            const stack = [];
+
+            function dfsTrace(currentCourse) {
+                stack.push(currentCourse);
+
+                // Base Case 1: CYCLE DETECTED!
+                if (visited.has(currentCourse)) {
+                    stepsList.push({
+                        type: 'CYCLE_DETECTED',
+                        title: `⚡ CYCLE DETECTED at Course ${currentCourse}!`,
+                        desc: `Course ${currentCourse} is ALREADY in visited set (active recursion stack)! Re-encountering an active node proves a back-edge exists -> CIRCULAR DEPENDENCY!`,
+                        courses: cloneMap(courses),
+                        visited: new Set(visited),
+                        safe: new Set(safe),
+                        activeCourse: currentCourse,
+                        activeEdge: null,
+                        cycleFound: true,
+                        stack: [...stack],
+                        codeLine: 15
+                    });
+                    stack.pop();
+                    return false;
+                }
+
+                const preMap = courses[currentCourse];
+
+                // Base Case 2: MEMOIZED SAFE / NO PREREQS
+                if (preMap.length === 0) {
+                    safe.add(currentCourse); // Mark safe for visualization parity
+                    stepsList.push({
+                        type: 'CHECK_SAFE',
+                        title: `Course ${currentCourse} Prerequisite Check: Safe!`,
+                        desc: `courses.get(${currentCourse}) is empty! Course ${currentCourse} has no remaining prerequisites or was previously verified cycle-free. Return true!`,
+                        courses: cloneMap(courses),
+                        visited: new Set(visited),
+                        safe: new Set(safe),
+                        activeCourse: currentCourse,
+                        activeEdge: null,
+                        cycleFound: false,
+                        stack: [...stack],
+                        codeLine: 17
+                    });
+                    stack.pop();
+                    return true;
+                }
+
+                // Mark Visiting
+                visited.add(currentCourse);
+
+                stepsList.push({
+                    type: 'MARK_VISITING',
+                    title: `Start Evaluating Course ${currentCourse}: Added to Active Stack`,
+                    desc: `Added Course ${currentCourse} to visited set. Exploring its ${preMap.length} prerequisite(s): [${preMap.join(', ')}]...`,
+                    courses: cloneMap(courses),
+                    visited: new Set(visited),
+                    safe: new Set(safe),
+                    activeCourse: currentCourse,
+                    activeEdge: null,
+                    cycleFound: false,
+                    stack: [...stack],
+                    codeLine: 18
+                });
+
+                // Copy array to iterate safely
+                const preListCopy = [...preMap];
+                for (let i = 0; i < preListCopy.length; i++) {
+                    const pre = preListCopy[i];
+
+                    stepsList.push({
+                        type: 'RECURSE_PRE',
+                        title: `Course ${currentCourse} &rarr; Recurse to Prerequisite Course ${pre}`,
+                        desc: `Calling dfs(${pre}) to verify dependency Course ${pre}...`,
+                        courses: cloneMap(courses),
+                        visited: new Set(visited),
+                        safe: new Set(safe),
+                        activeCourse: currentCourse,
+                        activeEdge: `${currentCourse}-${pre}`,
+                        cycleFound: false,
+                        stack: [...stack],
+                        codeLine: 20
+                    });
+
+                    const res = dfsTrace(pre);
+                    if (!res) {
+                        stack.pop();
+                        return false; // Cycle propagated upward
+                    }
+                }
+
+                // Backtrack visited
+                visited.delete(currentCourse);
+
+                stepsList.push({
+                    type: 'BACKTRACK_VISITED',
+                    title: `Backtracking: Course ${currentCourse} Removed from Active Stack`,
+                    desc: `Finished exploring all prerequisite branches for Course ${currentCourse}. Removed ${currentCourse} from active visited set.`,
+                    courses: cloneMap(courses),
+                    visited: new Set(visited),
+                    safe: new Set(safe),
+                    activeCourse: currentCourse,
+                    activeEdge: null,
+                    cycleFound: false,
+                    stack: [...stack],
+                    codeLine: 22
+                });
+
+                // Memoize safe
+                courses[currentCourse] = [];
+                safe.add(currentCourse);
+
+                stepsList.push({
+                    type: 'MEMOIZE_SAFE',
+                    title: `⚡ MEMOIZED SAFE: Cleared Prerequisite List for Course ${currentCourse}`,
+                    desc: `Executed courses.put(${currentCourse}, new ArrayList<>()). Course ${currentCourse} is now proven cycle-free! Any future DFS hitting Course ${currentCourse} will return true in O(1) time.`,
+                    courses: cloneMap(courses),
+                    visited: new Set(visited),
+                    safe: new Set(safe),
+                    activeCourse: currentCourse,
+                    activeEdge: null,
+                    cycleFound: false,
+                    stack: [...stack],
+                    codeLine: 23
+                });
+
+                stack.pop();
+                return true;
+            }
+
+            // Outer loop 0 to numCourses - 1
+            for (let c = 0; c < numCourses; c++) {
+                stepsList.push({
+                    type: 'OUTER_LOOP',
+                    title: `Outer Loop Scan: Start DFS from Course ${c}`,
+                    desc: `Checking Course ${c} of ${numCourses}. Iterating through all courses handles disconnected graphs!`,
+                    courses: cloneMap(courses),
+                    visited: new Set(visited),
+                    safe: new Set(safe),
+                    activeCourse: c,
+                    activeEdge: null,
+                    cycleFound: false,
+                    stack: [],
+                    codeLine: 10
+                });
+
+                const safeResult = dfsTrace(c);
+                if (!safeResult) {
+                    stepsList.push({
+                        type: 'FINISH_FAILED',
+                        title: 'Result: Impossible to Finish Courses! ❌',
+                        desc: `Found a circular dependency in the graph! Returned false.`,
+                        courses: cloneMap(courses),
+                        visited: new Set(visited),
+                        safe: new Set(safe),
+                        activeCourse: null,
+                        activeEdge: null,
+                        cycleFound: true,
+                        stack: [],
+                        codeLine: 11
+                    });
+                    return stepsList;
+                }
+            }
+
+            stepsList.push({
+                type: 'FINISH_SUCCESS',
+                title: 'Result: All Courses Can Be Finished! 🎉',
+                desc: `Scanned all ${numCourses} courses and verified ZERO circular dependencies exist! Returned true.`,
+                courses: cloneMap(courses),
+                visited: new Set(visited),
+                safe: new Set(safe),
+                activeCourse: null,
+                activeEdge: null,
+                cycleFound: false,
+                stack: [],
+                codeLine: 12
+            });
+
+            return stepsList;
+        }
+
+        function renderStep(stepIndex) {
+            if (!steps || steps.length === 0) return;
+            const step = steps[stepIndex];
+
+            // Progress Slider
+            document.getElementById('stepProgress').value = stepIndex;
+            document.getElementById('stepCounter').innerText = `Step ${stepIndex + 1}/${steps.length}`;
+
+            document.getElementById('firstBtn').disabled = (stepIndex === 0);
+            document.getElementById('prevBtn').disabled = (stepIndex === 0);
+            document.getElementById('nextBtn').disabled = (stepIndex === steps.length - 1);
+            document.getElementById('lastBtn').disabled = (stepIndex === steps.length - 1);
+
+            // Step Header & Narrative
+            document.getElementById('stepTitle').innerText = step.title;
+            document.getElementById('stepDescription').innerText = step.desc;
+            document.getElementById('stepTag').innerText = step.type.replace(/_/g, ' ');
+
+            // Status Badge
+            const statusBadge = document.getElementById('statusBadge');
+            if (step.type === 'FINISH_SUCCESS') {
+                statusBadge.innerText = 'All Courses Valid 🎉';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 border border-emerald-500/40';
+            } else if (step.cycleFound) {
+                statusBadge.innerText = '⚡ Cycle Detected!';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/40 pulse-rose';
+            } else {
+                statusBadge.innerText = 'DFS Traversing';
+                statusBadge.className = 'mono text-xs font-bold px-2.5 py-0.5 rounded bg-cyan-500/20 text-cyan-300 border border-cyan-500/40';
+            }
+
+            // Intuition Callout Text
+            const calloutText = document.getElementById('calloutText');
+            const calloutIcon = document.getElementById('calloutIcon');
+
+            if (step.cycleFound) {
+                calloutIcon.className = "fa-solid fa-triangle-exclamation text-rose-400 text-sm mt-0.5";
+                calloutText.innerHTML = `<strong class="text-rose-400">⚡ CIRCULAR DEPENDENCY DETECTED!</strong> Course ${step.activeCourse} pointed back to a course already inside the active recursion stack (\`visited\`). It is IMPOSSIBLE to complete these courses!`;
+            } else if (step.type === 'MEMOIZE_SAFE') {
+                calloutIcon.className = "fa-solid fa-bolt text-emerald-400 text-sm mt-0.5";
+                calloutText.innerHTML = `<strong class="text-emerald-400">⚡ MEMOIZATION IN ACTION!</strong> Cleared prerequisites for Course ${step.activeCourse} (\`courses.put(${step.activeCourse}, new ArrayList<>()).\`). Future paths reaching Course ${step.activeCourse} return \`true\` instantly in O(1) time!`;
+            } else {
+                calloutIcon.className = "fa-solid fa-circle-info text-cyan-400 text-sm mt-0.5";
+                calloutText.innerHTML = `<strong class="text-amber-300">Active Stack (\`visited.contains\`):</strong> Tracks courses along the current DFS call path. Re-encountering a node currently in \`visited\` means we walked in a circle &rarr; **CYCLE DETECTED!**`;
+            }
+
+            // Code Line Highlighting
+            for (let i = 1; i <= 25; i++) {
+                const line = document.getElementById(`code-line-${i}`);
+                if (line) line.classList.remove('active');
+            }
+            if (step.codeLine > 0) {
+                const activeLine = document.getElementById(`code-line-${step.codeLine}`);
+                if (activeLine) activeLine.classList.add('active');
+            }
+
+            // Call Stack Rendering
+            const stackContainer = document.getElementById('callStackContainer');
+            document.getElementById('stackDepthBadge').innerText = `Depth: ${step.stack.length}`;
+
+            if (step.stack.length === 0) {
+                stackContainer.innerHTML = `<div class="text-xs text-slate-500 italic text-center py-2">Call stack is empty</div>`;
+            } else {
+                stackContainer.innerHTML = step.stack.map((course, depth) => `
+                    <div class="p-2 rounded-xl border ${depth === step.stack.length - 1 ? 'bg-amber-950/50 border-amber-500/70 text-amber-200' : 'bg-slate-950/80 border-slate-800 text-slate-400'} font-mono text-xs flex items-center justify-between">
+                        <span class="flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full ${depth === step.stack.length - 1 ? 'bg-amber-400' : 'bg-slate-600'}"></span>
+                            dfs(currentCourse: ${course})
+                        </span>
+                        <span class="text-[10px] px-1.5 py-0.5 rounded bg-slate-900 border border-slate-800">
+                            depth: ${depth + 1}
+                        </span>
+                    </div>
+                `).join('');
+            }
+
+            // Render Adjacency List Inspector
+            renderAdjacencyList(step);
+
+            // Render SVG Graph Canvas
+            renderSvgGraph(step);
+        }
+
+        function renderAdjacencyList(step) {
+            const container = document.getElementById('adjListContainer');
+            const numCourses = currentPreset.numCourses;
+
+            let html = '';
+            for (let c = 0; c < numCourses; c++) {
+                const prereqs = step.courses[c] || [];
+                const isVisiting = step.visited.has(c);
+                const isSafe = step.safe.has(c);
+                const isActive = (step.activeCourse === c);
+                const isCycle = (step.cycleFound && isActive);
+
+                let cardStyle = "bg-slate-900 border-slate-800 text-slate-400";
+                if (isCycle) {
+                    cardStyle = "bg-rose-950/60 border-rose-500/80 text-rose-300 font-bold";
+                } else if (isSafe) {
+                    cardStyle = "bg-emerald-950/50 border-emerald-500/60 text-emerald-300 font-bold";
+                } else if (isVisiting) {
+                    cardStyle = "bg-amber-950/50 border-amber-500/60 text-amber-300 font-bold";
+                }
+
+                if (isActive && !isCycle) {
+                    cardStyle += " border-2 border-cyan-400 text-cyan-200";
+                }
+
+                const prereqsText = prereqs.length === 0 ? 
+                    `<span class="text-[10px] text-emerald-400 italic">[ ] (0 prereqs - Safe!)</span>` : 
+                    `[ ${prereqs.map(p => `<span class="text-slate-200 font-bold">${p}</span>`).join(', ')} ]`;
+
+                html += `
+                    <div class="p-1.5 px-3 rounded-lg border ${cardStyle} mono text-xs flex items-center justify-between shadow-sm">
+                        <span class="font-bold flex items-center gap-1.5">
+                            <span class="text-slate-500 font-normal">Course</span> ${c}:
+                        </span>
+                        <div class="flex items-center gap-1">
+                            <span class="text-[10px] text-slate-500">&rarr; prereqs:</span> ${prereqsText}
+                        </div>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+        }
+
+        // Render SVG Graph Display with synchronized color matching
+        function renderSvgGraph(step) {
+            const svg = document.getElementById('graphSvg');
+            const numCourses = currentPreset.numCourses;
+
+            // Radial Layout positions around center (300, 160)
+            const cx = 300;
+            const cy = 160;
+            const radius = Math.min(110, 80 + numCourses * 5);
+
+            const nodes = [];
+            for (let i = 0; i < numCourses; i++) {
+                const angle = (i / numCourses) * 2 * Math.PI - Math.PI / 2;
+                const x = cx + radius * Math.cos(angle);
+                const y = cy + radius * Math.sin(angle);
+                nodes.push({ id: i, x, y });
+            }
+
+            // Edges SVG
+            let edgesSvg = '';
+            for (let c = 0; c < numCourses; c++) {
+                const prereqs = currentPreset.prerequisites.filter(p => p[0] === c).map(p => p[1]);
+
+                prereqs.forEach(pre => {
+                    const fromNode = nodes.find(n => n.id === c);
+                    const toNode = nodes.find(n => n.id === pre);
+
+                    if (fromNode && toNode) {
+                        const edgeKey = `${c}-${pre}`;
+                        const isActiveEdge = (step.activeEdge === edgeKey);
+                        const isCycleEdge = (step.cycleFound && step.activeCourse === c && step.visited.has(pre));
+
+                        let stroke = '#475569';
+                        let strokeWidth = '1.5';
+                        let marker = 'url(#arrow-default)';
+
+                        if (isCycleEdge) {
+                            stroke = '#f43f5e';
+                            strokeWidth = '3.5';
+                            marker = 'url(#arrow-cycle)';
+                        } else if (isActiveEdge) {
+                            stroke = '#f59e0b';
+                            strokeWidth = '3';
+                            marker = 'url(#arrow-active)';
+                        } else if (step.safe.has(c) || step.safe.has(pre)) {
+                            stroke = '#10b981';
+                            marker = 'url(#arrow-safe)';
+                        }
+
+                        // Slight curve for opposing edges
+                        const dx = toNode.x - fromNode.x;
+                        const dy = toNode.y - fromNode.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+                        const normX = dx / dist;
+                        const normY = dy / dist;
+
+                        const curveX = (fromNode.x + toNode.x) / 2 - normY * 18;
+                        const curveY = (fromNode.y + toNode.y) / 2 + normX * 18;
+
+                        edgesSvg += `
+                            <path d="M ${fromNode.x} ${fromNode.y} Q ${curveX} ${curveY} ${toNode.x} ${toNode.y}"
+                                  fill="none" stroke="${stroke}" stroke-width="${strokeWidth}" marker-end="${marker}" class="graph-edge" />
+                        `;
+                    }
+                });
+            }
+
+            // Nodes SVG
+            let nodesSvg = '';
+            nodes.forEach(node => {
+                const isVisiting = step.visited.has(node.id);
+                const isSafe = step.safe.has(node.id);
+                const isActive = (step.activeCourse === node.id);
+                const isCycle = (step.cycleFound && isActive);
+
+                let fill = '#0f172a';
+                let stroke = '#475569';
+                let textColor = '#cbd5e1';
+                let pulseClass = '';
+
+                if (isCycle) {
+                    fill = '#881337';
+                    stroke = '#f43f5e';
+                    textColor = '#ffffff';
+                    pulseClass = 'pulse-rose';
+                } else if (isVisiting) {
+                    fill = '#78350f';
+                    stroke = '#f59e0b';
+                    textColor = '#ffffff';
+                    pulseClass = 'pulse-amber';
+                } else if (isSafe) {
+                    fill = '#064e3b';
+                    stroke = '#10b981';
+                    textColor = '#ecfdf5';
+                }
+
+                nodesSvg += `
+                    <g class="graph-node-group ${pulseClass}" transform="translate(${node.x}, ${node.y})">
+                        ${isActive && !isCycle ? `<circle r="25" fill="none" stroke="#06b6d4" stroke-width="2" stroke-dasharray="4 2" />` : ''}
+                        <circle r="20" fill="${fill}" stroke="${stroke}" stroke-width="${isActive ? '3.5' : '2.5'}" />
+                        <text y="4" text-anchor="middle" font-family="Fira Code, monospace" font-size="12" font-weight="bold" fill="${textColor}">
+                            ${node.id}
+                        </text>
+                    </g>
+                `;
+            });
+
+            svg.innerHTML = `${edgesSvg}${nodesSvg}`;
+        }
+
+        function loadPreset(presetIdx) {
+            stopPlay();
+            currentPreset = PRESETS[presetIdx];
+
+            steps = generateCourseScheduleSteps(currentPreset.numCourses, currentPreset.prerequisites);
+            document.getElementById('stepProgress').max = steps.length - 1;
+            currentStepIndex = 0;
+
+            renderStep(0);
+        }
+
+        function startPlay() {
+            if (isPlaying) return;
+            isPlaying = true;
+            document.getElementById('playIcon').className = 'fa-solid fa-pause';
+            document.getElementById('playText').innerText = 'Pause';
+
+            playInterval = setInterval(() => {
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                } else {
+                    stopPlay();
+                }
+            }, playSpeed);
+        }
+
+        function stopPlay() {
+            isPlaying = false;
+            if (playInterval) clearInterval(playInterval);
+            document.getElementById('playIcon').className = 'fa-solid fa-play';
+            document.getElementById('playText').innerText = 'Play';
+        }
+
+        function togglePlay() {
+            if (isPlaying) stopPlay();
+            else startPlay();
+        }
+
+        function bindEvents() {
+            document.getElementById('presetSelect').addEventListener('change', (e) => {
+                loadPreset(parseInt(e.target.value));
+            });
+
+            document.getElementById('playBtn').addEventListener('click', togglePlay);
+
+            document.getElementById('firstBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('prevBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex > 0) {
+                    currentStepIndex--;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('nextBtn').addEventListener('click', () => {
+                stopPlay();
+                if (currentStepIndex < steps.length - 1) {
+                    currentStepIndex++;
+                    renderStep(currentStepIndex);
+                }
+            });
+
+            document.getElementById('lastBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = steps.length - 1;
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                stopPlay();
+                currentStepIndex = 0;
+                renderStep(0);
+            });
+
+            document.getElementById('stepProgress').addEventListener('input', (e) => {
+                stopPlay();
+                currentStepIndex = parseInt(e.target.value);
+                renderStep(currentStepIndex);
+            });
+
+            document.getElementById('speedSelect').addEventListener('change', (e) => {
+                playSpeed = parseInt(e.target.value);
+                if (isPlaying) {
+                    stopPlay();
+                    startPlay();
+                }
+            });
+
+            window.addEventListener('keydown', (e) => {
+                if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA' || document.activeElement.tagName === 'SELECT') return;
+                if (e.key === 'ArrowRight') {
+                    document.getElementById('nextBtn').click();
+                } else if (e.key === 'ArrowLeft') {
+                    document.getElementById('prevBtn').click();
+                } else if (e.key === ' ') {
+                    e.preventDefault();
+                    document.getElementById('playBtn').click();
+                }
+            });
+
+            // Modal Handlers
+            const modal = document.getElementById('customModal');
+            document.getElementById('customModalBtn').addEventListener('click', () => {
+                stopPlay();
+                document.getElementById('modalError').classList.add('hidden');
+                modal.classList.remove('hidden');
+            });
+
+            document.getElementById('closeModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+            document.getElementById('cancelModalBtn').addEventListener('click', () => modal.classList.add('hidden'));
+
+            document.getElementById('applyCustomBtn').addEventListener('click', () => {
+                const numCoursesVal = parseInt(document.getElementById('customNumCourses').value);
+                const prereqsText = document.getElementById('customPrereqsText').value.trim();
+                const errorBox = document.getElementById('modalError');
+
+                try {
+                    if (isNaN(numCoursesVal) || numCoursesVal < 1 || numCoursesVal > 8) {
+                        throw new Error('numCourses must be between 1 and 8 for clear graph visualization.');
+                    }
+
+                    const lines = prereqsText.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+                    const parsedPrereqs = [];
+
+                    for (let l of lines) {
+                        const parts = l.split(',').map(v => parseInt(v.trim())).filter(n => !isNaN(n));
+                        if (parts.length !== 2) throw new Error('Each prerequisite pair line must have format: course, prereq');
+                        if (parts[0] < 0 || parts[0] >= numCoursesVal || parts[1] < 0 || parts[1] >= numCoursesVal) {
+                            throw new Error(`Course numbers must be between 0 and ${numCoursesVal - 1}`);
+                        }
+                        parsedPrereqs.push(parts);
+                    }
+
+                    currentPreset = {
+                        name: "Custom User Graph",
+                        numCourses: numCoursesVal,
+                        prerequisites: parsedPrereqs
+                    };
+
+                    steps = generateCourseScheduleSteps(currentPreset.numCourses, currentPreset.prerequisites);
+                    document.getElementById('stepProgress').max = steps.length - 1;
+                    currentStepIndex = 0;
+
+                    renderStep(0);
+                    modal.classList.add('hidden');
+                } catch (err) {
+                    errorBox.innerText = err.message;
+                    errorBox.classList.remove('hidden');
+                }
+            });
+        }
+
+        function initApp() {
+            bindEvents();
+            loadPreset(0);
+        }
+
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initApp);
+        } else {
+            initApp();
+        }
+    </script>
+</body>
+</html>
