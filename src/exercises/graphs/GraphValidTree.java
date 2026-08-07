@@ -98,7 +98,7 @@ public class GraphValidTree {
         // connected (a single tree component), DFS will naturally traverse through
         // every single neighbor and visit all N nodes in a single run.
         // ---------------------------------------------------------------------
-        dfs(0, adjList, visited);
+        dfs(-1,0, adjList, visited);
 
         // ---------------------------------------------------------------------
         // STEP 4: VERIFY FULL CONNECTIVITY
@@ -115,7 +115,7 @@ public class GraphValidTree {
      * @param adjList  The bidirectional adjacency list.
      * @param visited  HashSet recording all nodes visited so far.
      */
-    private void dfs(int node, List<List<Integer>> adjList, HashSet<Integer> visited) {
+    private void dfs(int previous,int node, List<List<Integer>> adjList, HashSet<Integer> visited) {
         // ---------------------------------------------------------------------
         // BASE CASE / PRUNING CONDITION:
         // INTUITION: If `visited` already contains `node`, stop exploring!
@@ -134,7 +134,9 @@ public class GraphValidTree {
         // RECURSIVE STEP: Explore all adjacent neighbors
         // ---------------------------------------------------------------------
         for (Integer neighbor : adjList.get(node)) {
-            dfs(neighbor, adjList, visited);
+            if(neighbor != previous) {
+                dfs(node,neighbor, adjList, visited);
+            }
         }
     }
 }
